@@ -30,7 +30,9 @@ namespace ChessChallenge.Application
                     DrawNextText(stats.BotName + ":", nameFontSize, Color.WHITE);
                     DrawNextText($"Score: +{stats.NumWins} ={stats.NumDraws} -{stats.NumLosses}", regularFontSize, col);
                     DrawNextText($"Num Timeouts: {stats.NumTimeouts}", regularFontSize, col);
-                    DrawNextText($"Num Illegal Moves: {stats.NumIllegalMoves}", regularFontSize, col);
+                    DrawNextText($"Total Time Used: {stats.TotalTimeUsed / 1000}", regularFontSize, col);
+                    DrawNextText($"Total Time Remaining: {stats.TotalTimeRemaining / 1000}", regularFontSize, col);
+                    // DrawNextText($"Num Illegal Moves: {stats.NumIllegalMoves}", regularFontSize, col);
                 }
            
                 void DrawNextText(string text, int fontSize, Color col)

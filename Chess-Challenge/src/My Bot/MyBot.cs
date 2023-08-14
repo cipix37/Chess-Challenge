@@ -25,7 +25,7 @@ public class MyBot : IChessBot
 		// determine moves and ending
 		Move[] moves = globalBoard.GetLegalMoves();
 		double[] moveValues = new double[moves.Length];
-		(Move, double)[] m = new (Move, double)[moves.Length];
+		// (Move, double)[] moveHelper = new (Move, double)[moves.Length];
 
 		// if a leaf is reached return the static evaluation
 		if (currentDepth == maxDepth || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
@@ -33,10 +33,10 @@ public class MyBot : IChessBot
 			return (new Move(), EndingEvaluation());
 		}
 
+		currentDepth++;
 		for (int k = 0; k < moves.Length; k++)
 		{
 			globalBoard.MakeMove(moves[k]);
-			currentDepth++;
 			moveValues[k] = DeepThink(timer, alfa, beta, -player).Item2;
 			if (player == 1)
 			{
@@ -57,18 +57,14 @@ public class MyBot : IChessBot
 				beta = Math.Min(beta, bestMoveValue);
 			}
 			globalBoard.UndoMove(moves[k]);
-			currentDepth--;
 			if (alfa > beta) break;
 		}
-		for (int i = 0; i < moves.Length; i++)
-		{
-			m[i] = (moves[i], moveValues[i]);
-		}
-		if (bestMoveIndex != -1)
-		{
-			return (moves[bestMoveIndex], bestMoveValue);
-		}
-		return (moves[0], bestMoveValue);
+		currentDepth--;
+		//for (int i = 0; i < moves.Length; i++)
+		//{
+		//	moveHelper[i] = (moves[i], moveValues[i]);
+		//}
+		return (moves[bestMoveIndex], bestMoveValue);
 	}
 
 	private double EndingEvaluation()
@@ -79,9 +75,13 @@ public class MyBot : IChessBot
 		{
 			return -color * (1000 - currentDepth);
 		}
-		if (globalBoard.IsDraw())
+		if (globalBoard.IsInsufficientMaterial())
 		{
-			return -color * 500 * Math.Sign(StaticEvaluation());
+			return 0;
+		}
+		if (globalBoard.IsFiftyMoveDraw() || globalBoard.IsInStalemate() || globalBoard.IsRepeatedPosition())
+		{
+			return color * 500 * Math.Sign(StaticEvaluation());
 		}
 		return StaticEvaluation();
 	}
@@ -101,11 +101,11 @@ public class MyBot : IChessBot
 				}
 				if (p.IsKnight)
 				{
-					result += pieceColor * 3.5;
+					result += pieceColor * (3.5 + KnightRelativePositionValue[row, col] / 8);
 				}
 				if (p.IsBishop)
 				{
-					result += pieceColor * 3.5;
+					result += pieceColor * (3.5 + BishopRelativePositionValue[row, col] / 13);
 				}
 				if (p.IsRook)
 				{
@@ -113,14 +113,59 @@ public class MyBot : IChessBot
 				}
 				if (p.IsQueen)
 				{
-					result += pieceColor * 10;
+					result += pieceColor * (10 + QueenRelativePositionValue[row, col] / 27);
 				}
-				//if (p.IsKing)
-				//{
-				//	result += ColorEvaluation(p) * 10000;
-				//}
+				if (p.IsKing)
+				{
+					result += pieceColor * KingRelativePositionValue[row, col] / 8 / 2;
+				}
 			}
 		}
 		return result;
 	}
+
+	//max=8
+	private double[,] KnightRelativePositionValue = {
+	{ 2, 3, 4, 4, 4, 4, 3, 2},
+	{ 3, 4, 6, 6, 6, 6, 4, 3},
+	{ 4, 6, 8, 8, 8, 8, 6, 4},
+	{ 4, 6, 8, 8, 8, 8, 6, 4},
+	{ 4, 6, 8, 8, 8, 8, 6, 4},
+	{ 4, 6, 8, 8, 8, 8, 6, 4},
+	{ 3, 4, 6, 6, 6, 6, 4, 3},
+	{ 2, 3, 4, 4, 4, 4, 3, 2}
+	};
+	//max=13
+	private double[,] BishopRelativePositionValue ={
+	{ 7, 7, 7, 7, 7, 7, 7, 7},
+	{ 7, 23, 23, 23, 23, 23, 23, 7},
+	{ 7, 23, 11, 11, 11, 11, 23, 7},
+	{ 7, 23, 11, 13, 13, 11, 23, 7},
+	{ 7, 23, 11, 13, 13, 11, 23, 7},
+	{ 7, 23, 11, 11, 11, 11, 23, 7},
+	{ 7, 23, 23, 23, 23, 23, 23, 7},
+	{ 7, 7, 7, 7, 7, 7, 7, 7}
+	};
+	//max=27
+	private double[,] QueenRelativePositionValue ={
+	{ 21, 21, 21, 21, 21, 21, 21, 21},
+	{ 21, 23, 23, 23, 23, 23, 23, 21},
+	{ 21, 23, 25, 25, 25, 25, 23, 21},
+	{ 21, 23, 25, 27, 27, 25, 23, 21},
+	{ 21, 23, 25, 27, 27, 25, 23, 21},
+	{ 21, 23, 25, 25, 25, 25, 23, 21},
+	{ 21, 23, 23, 23, 23, 23, 23, 21},
+	{ 21, 21, 21, 21, 21, 21, 21, 21}
+	};
+	//max=8
+	private double[,] KingRelativePositionValue ={
+	{ 3, 5, 5, 5, 5, 5, 5, 3},
+	{ 5, 8, 8, 8, 8, 8, 8, 5},
+	{ 5, 8, 8, 8, 8, 8, 8, 5},
+	{ 5, 8, 8, 8, 8, 8, 8, 5},
+	{ 5, 8, 8, 8, 8, 8, 8, 5},
+	{ 5, 8, 8, 8, 8, 8, 8, 5},
+	{ 5, 8, 8, 8, 8, 8, 8, 5},
+	{ 3, 5, 5, 5, 5, 5, 5, 3}
+	};
 }

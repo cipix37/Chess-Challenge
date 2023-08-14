@@ -3,10 +3,11 @@ using System;
 
 public class MyBot : IChessBot
 {
+
 	// global variables
 	private Board globalBoard;
 	private readonly Random random = new Random();
-	private int maxDepth = 4, currentDepth = 0;
+	private int maxDepth = 4, currentDepth = 0, maxBreadth = 150000, currentBreadth = 1;
 
 	public Move Think(Board board, Timer timer)
 	{
@@ -27,12 +28,13 @@ public class MyBot : IChessBot
 		double[] moveValues = new double[moves.Length];
 
 		// if a leaf is reached return the static evaluation
-		if (currentDepth == maxDepth || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
+		if ((currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
 		{
 			return (new Move(), EndingEvaluation());
 		}
 
 		currentDepth++;
+		currentBreadth = currentBreadth * (moves.Length + 1);
 		for (int k = 0; k < moves.Length; k++)
 		{
 			globalBoard.MakeMove(moves[k]);
@@ -58,6 +60,7 @@ public class MyBot : IChessBot
 			globalBoard.UndoMove(moves[k]);
 			if (alfa > beta) break;
 		}
+		currentBreadth = currentBreadth / (moves.Length + 1);
 		currentDepth--;
 		return (moves[bestMoveIndex], bestMoveValue);
 	}
@@ -116,11 +119,11 @@ public class MyBot : IChessBot
 				}
 				if (piece.IsKnight)
 				{
-					result = 3.5 + KnightRelativePositionValue2[row, col] / 56;
+					result = 3.5 + KnightRelativePositionValue2[f(row), f(col)] / 56;
 				}
 				if (piece.IsBishop)
 				{
-					result = 3.5 + BishopRelativePositionValue2[row, col] / 121;
+					result = 3.5 + BishopRelativePositionValue2[f(row), f(col)] / 121;
 				}
 				if (piece.IsRook)
 				{
@@ -128,11 +131,11 @@ public class MyBot : IChessBot
 				}
 				if (piece.IsQueen)
 				{
-					result = 10 + QueenRelativePositionValue2[row, col] / 317;
+					result = 10 + QueenRelativePositionValue2[f(row), f(col)] / 317;
 				}
 				if (piece.IsKing)
 				{
-					result = KingRelativePositionValue2[row, col] / 512 / 2;
+					result = KingRelativePositionValue2[f(row), f(col)] / 512 / 2;
 				}
 				// player value
 				if (piece.IsWhite)
@@ -146,52 +149,44 @@ public class MyBot : IChessBot
 			}
 		}
 		return whiteScore - blackScore;
+		//if (whiteScore > blackScore)
+		//{
+		//	return whiteScore / blackScore;
+		//}
+		//return -blackScore / whiteScore;
 	}
 
 	#region value tables
+
+	private int f(int x) => 3.5 > x ? x : 7 - x;
+
 	//max=56
 	private double[,] KnightRelativePositionValue2 ={
-	{ 12,18,23,26,26,23,18,12},
-	{ 18,24,32,37,37,32,24,18},
-	{ 23,32,42,48,48,42,32,23},
-	{ 26,37,48,56,56,48,37,26},
-	{ 26,37,48,56,56,48,37,26},
-	{ 23,32,42,48,48,42,32,23},
-	{ 18,24,32,37,37,32,24,18},
-	{ 12,18,23,26,26,23,18,12}
+	{ 12,18,23,26},
+	{ 18,24,32,37},
+	{ 23,32,42,48},
+	{ 26,37,48,56},
 	};
 	//max=121
 	private double[,] BishopRelativePositionValue2 ={
-	{ 73,67,63,61,61,63,67,73},
-	{ 67,85,81,79,79,81,85,67},
-	{ 63,81,101,99,99,101,81,63},
-	{ 61,79,99,121,121,99,79,61},
-	{ 61,79,99,121,121,99,79,61},
-	{ 63,81,101,99,99,101,81,63},
-	{ 67,85,81,79,79,81,85,67},
-	{ 73,67,63,61,61,63,67,73}
+	{ 73,67,63,61},
+	{ 67,85,81,79},
+	{ 63,81,101,99},
+	{ 61,79,99,121},
 	};
 	//max=317
 	private double[,] QueenRelativePositionValue2 ={
-	{ 269,263,259,257,257,259,263,269},
-	{ 263,281,277,275,275,277,281,263},
-	{ 259,277,297,295,295,297,277,259},
-	{ 257,275,295,317,317,295,275,257},
-	{ 257,275,295,317,317,295,275,257},
-	{ 259,277,297,295,295,297,277,259},
-	{ 263,281,277,275,275,277,281,263},
-	{ 269,263,259,257,257,259,263,269}
+	{ 269,263,259,257},
+	{ 263,281,277,275},
+	{ 259,277,297,295},
+	{ 257,275,295,317},
 	};
 	//max=512
 	private double[,] KingRelativePositionValue2 ={
-	{ 105,183,220,233,233,220,183,105},
-	{ 183,318,382,404,404,382,318,183},
-	{ 220,382,459,485,485,459,382,220},
-	{ 233,404,485,512,512,485,404,233},
-	{ 233,404,485,512,512,485,404,233},
-	{ 220,382,459,485,485,459,382,220},
-	{ 183,318,382,404,404,382,318,183},
-	{ 105,183,220,233,233,220,183,105}
+	{ 105,183,220,233},
+	{ 183,318,382,404},
+	{ 220,382,459,485},
+	{ 233,404,485,512},
 	};
 	#endregion
 }

@@ -5,7 +5,6 @@ namespace ChessChallenge.Example
 {
 	public class EvilBot : IChessBot
 	{
-
 		// global variables
 		private Board globalBoard;
 		private readonly Random random = new Random();
@@ -28,7 +27,6 @@ namespace ChessChallenge.Example
 			// determine moves and ending
 			Move[] moves = globalBoard.GetLegalMoves();
 			double[] moveValues = new double[moves.Length];
-			// (Move, double)[] moveHelper = new (Move, double)[moves.Length];
 
 			// if a leaf is reached return the static evaluation
 			if (currentDepth == maxDepth || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
@@ -63,10 +61,6 @@ namespace ChessChallenge.Example
 				if (alfa > beta) break;
 			}
 			currentDepth--;
-			//for (int i = 0; i < moves.Length; i++)
-			//{
-			//	moveHelper[i] = (moves[i], moveValues[i]);
-			//}
 			return (moves[bestMoveIndex], bestMoveValue);
 		}
 
@@ -91,85 +85,116 @@ namespace ChessChallenge.Example
 
 		private double StaticEvaluation()
 		{
-			double result = 0;
+			double result = 0, whiteScore = 0, blackScore = 0;
 			for (int row = 0; row < 8; row++)
 			{
 				for (int col = 0; col < 8; col++)
 				{
-					Piece p = globalBoard.GetPiece(new Square(col, row));
-					int pieceColor = p.IsWhite ? 1 : -1;
-					if (p.IsPawn)
+					// piece value
+					Piece piece = globalBoard.GetPiece(new Square(col, row));
+					result = 0;
+					if (piece.IsPawn)
 					{
-						result += pieceColor * 1;
+						if (piece.IsWhite)
+						{
+							switch (row)
+							{
+								case 6: { result = 4.5; break; }
+								case 5: { result = 1.5; break; }
+								case 4: { result = 1.1; break; }
+								default: { result = 1; break; }
+							}
+						}
+						else
+						{
+							switch (row)
+							{
+								case 1: { result = 4.5; break; }
+								case 2: { result = 1.5; break; }
+								case 3: { result = 1.1; break; }
+								default: { result = 1; break; }
+							}
+						}
 					}
-					if (p.IsKnight)
+					if (piece.IsKnight)
 					{
-						result += pieceColor * (3.5 + KnightRelativePositionValue[row, col] / 8);
+						result = 3.5 + KnightRelativePositionValue2[row, col] / 56;
 					}
-					if (p.IsBishop)
+					if (piece.IsBishop)
 					{
-						result += pieceColor * (3.5 + BishopRelativePositionValue[row, col] / 13);
+						result = 3.5 + BishopRelativePositionValue2[row, col] / 121;
 					}
-					if (p.IsRook)
+					if (piece.IsRook)
 					{
-						result += pieceColor * 5;
+						result = 5;
 					}
-					if (p.IsQueen)
+					if (piece.IsQueen)
 					{
-						result += pieceColor * (10 + QueenRelativePositionValue[row, col] / 27);
+						result = 10 + QueenRelativePositionValue2[row, col] / 317;
 					}
-					if (p.IsKing)
+					if (piece.IsKing)
 					{
-						result += pieceColor * KingRelativePositionValue[row, col] / 8 / 2;
+						result = KingRelativePositionValue2[row, col] / 512 / 2;
+					}
+					// player value
+					if (piece.IsWhite)
+					{
+						whiteScore += result;
+					}
+					else
+					{
+						blackScore += result;
 					}
 				}
 			}
-			return result;
+			return whiteScore - blackScore;
 		}
 
-		//max=8
-		private double[,] KnightRelativePositionValue = {
-		{ 2, 3, 4, 4, 4, 4, 3, 2},
-		{ 3, 4, 6, 6, 6, 6, 4, 3},
-		{ 4, 6, 8, 8, 8, 8, 6, 4},
-		{ 4, 6, 8, 8, 8, 8, 6, 4},
-		{ 4, 6, 8, 8, 8, 8, 6, 4},
-		{ 4, 6, 8, 8, 8, 8, 6, 4},
-		{ 3, 4, 6, 6, 6, 6, 4, 3},
-		{ 2, 3, 4, 4, 4, 4, 3, 2}
-		};
-			//max=13
-			private double[,] BishopRelativePositionValue ={
-		{ 7, 7, 7, 7, 7, 7, 7, 7},
-		{ 7, 23, 23, 23, 23, 23, 23, 7},
-		{ 7, 23, 11, 11, 11, 11, 23, 7},
-		{ 7, 23, 11, 13, 13, 11, 23, 7},
-		{ 7, 23, 11, 13, 13, 11, 23, 7},
-		{ 7, 23, 11, 11, 11, 11, 23, 7},
-		{ 7, 23, 23, 23, 23, 23, 23, 7},
-		{ 7, 7, 7, 7, 7, 7, 7, 7}
-		};
-			//max=27
-			private double[,] QueenRelativePositionValue ={
-		{ 21, 21, 21, 21, 21, 21, 21, 21},
-		{ 21, 23, 23, 23, 23, 23, 23, 21},
-		{ 21, 23, 25, 25, 25, 25, 23, 21},
-		{ 21, 23, 25, 27, 27, 25, 23, 21},
-		{ 21, 23, 25, 27, 27, 25, 23, 21},
-		{ 21, 23, 25, 25, 25, 25, 23, 21},
-		{ 21, 23, 23, 23, 23, 23, 23, 21},
-		{ 21, 21, 21, 21, 21, 21, 21, 21}
-		};
-			//max=8
-			private double[,] KingRelativePositionValue ={
-		{ 3, 5, 5, 5, 5, 5, 5, 3},
-		{ 5, 8, 8, 8, 8, 8, 8, 5},
-		{ 5, 8, 8, 8, 8, 8, 8, 5},
-		{ 5, 8, 8, 8, 8, 8, 8, 5},
-		{ 5, 8, 8, 8, 8, 8, 8, 5},
-		{ 5, 8, 8, 8, 8, 8, 8, 5},
-		{ 5, 8, 8, 8, 8, 8, 8, 5},
-		{ 3, 5, 5, 5, 5, 5, 5, 3}
-		};
+		#region value tables
+		//max=56
+		private double[,] KnightRelativePositionValue2 ={
+	{ 12,18,23,26,26,23,18,12},
+	{ 18,24,32,37,37,32,24,18},
+	{ 23,32,42,48,48,42,32,23},
+	{ 26,37,48,56,56,48,37,26},
+	{ 26,37,48,56,56,48,37,26},
+	{ 23,32,42,48,48,42,32,23},
+	{ 18,24,32,37,37,32,24,18},
+	{ 12,18,23,26,26,23,18,12}
+	};
+		//max=121
+		private double[,] BishopRelativePositionValue2 ={
+	{ 73,67,63,61,61,63,67,73},
+	{ 67,85,81,79,79,81,85,67},
+	{ 63,81,101,99,99,101,81,63},
+	{ 61,79,99,121,121,99,79,61},
+	{ 61,79,99,121,121,99,79,61},
+	{ 63,81,101,99,99,101,81,63},
+	{ 67,85,81,79,79,81,85,67},
+	{ 73,67,63,61,61,63,67,73}
+	};
+		//max=317
+		private double[,] QueenRelativePositionValue2 ={
+	{ 269,263,259,257,257,259,263,269},
+	{ 263,281,277,275,275,277,281,263},
+	{ 259,277,297,295,295,297,277,259},
+	{ 257,275,295,317,317,295,275,257},
+	{ 257,275,295,317,317,295,275,257},
+	{ 259,277,297,295,295,297,277,259},
+	{ 263,281,277,275,275,277,281,263},
+	{ 269,263,259,257,257,259,263,269}
+	};
+		//max=512
+		private double[,] KingRelativePositionValue2 ={
+	{ 105,183,220,233,233,220,183,105},
+	{ 183,318,382,404,404,382,318,183},
+	{ 220,382,459,485,485,459,382,220},
+	{ 233,404,485,512,512,485,404,233},
+	{ 233,404,485,512,512,485,404,233},
+	{ 220,382,459,485,485,459,382,220},
+	{ 183,318,382,404,404,382,318,183},
+	{ 105,183,220,233,233,220,183,105}
+	};
+		#endregion
 	}
 }

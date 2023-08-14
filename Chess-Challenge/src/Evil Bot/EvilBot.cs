@@ -3,8 +3,8 @@ using System;
 
 namespace ChessChallenge.Example
 {
-    public class EvilBot : IChessBot
-    {
+	public class EvilBot : IChessBot
+	{
 
 		// global variables
 		private Board globalBoard;
@@ -104,11 +104,11 @@ namespace ChessChallenge.Example
 					}
 					if (p.IsKnight)
 					{
-						result += pieceColor * 3.5;
+						result += pieceColor * (3.5 + KnightRelativePositionValue[row, col] / 8);
 					}
 					if (p.IsBishop)
 					{
-						result += pieceColor * 3.5;
+						result += pieceColor * (3.5 + BishopRelativePositionValue[row, col] / 13);
 					}
 					if (p.IsRook)
 					{
@@ -116,15 +116,60 @@ namespace ChessChallenge.Example
 					}
 					if (p.IsQueen)
 					{
-						result += pieceColor * 10;
+						result += pieceColor * (10 + QueenRelativePositionValue[row, col] / 27);
 					}
-					//if (p.IsKing)
-					//{
-					//	result += ColorEvaluation(p) * 10000;
-					//}
+					if (p.IsKing)
+					{
+						result += pieceColor * KingRelativePositionValue[row, col] / 8 / 2;
+					}
 				}
 			}
 			return result;
 		}
+
+		//max=8
+		private double[,] KnightRelativePositionValue = {
+		{ 2, 3, 4, 4, 4, 4, 3, 2},
+		{ 3, 4, 6, 6, 6, 6, 4, 3},
+		{ 4, 6, 8, 8, 8, 8, 6, 4},
+		{ 4, 6, 8, 8, 8, 8, 6, 4},
+		{ 4, 6, 8, 8, 8, 8, 6, 4},
+		{ 4, 6, 8, 8, 8, 8, 6, 4},
+		{ 3, 4, 6, 6, 6, 6, 4, 3},
+		{ 2, 3, 4, 4, 4, 4, 3, 2}
+		};
+			//max=13
+			private double[,] BishopRelativePositionValue ={
+		{ 7, 7, 7, 7, 7, 7, 7, 7},
+		{ 7, 23, 23, 23, 23, 23, 23, 7},
+		{ 7, 23, 11, 11, 11, 11, 23, 7},
+		{ 7, 23, 11, 13, 13, 11, 23, 7},
+		{ 7, 23, 11, 13, 13, 11, 23, 7},
+		{ 7, 23, 11, 11, 11, 11, 23, 7},
+		{ 7, 23, 23, 23, 23, 23, 23, 7},
+		{ 7, 7, 7, 7, 7, 7, 7, 7}
+		};
+			//max=27
+			private double[,] QueenRelativePositionValue ={
+		{ 21, 21, 21, 21, 21, 21, 21, 21},
+		{ 21, 23, 23, 23, 23, 23, 23, 21},
+		{ 21, 23, 25, 25, 25, 25, 23, 21},
+		{ 21, 23, 25, 27, 27, 25, 23, 21},
+		{ 21, 23, 25, 27, 27, 25, 23, 21},
+		{ 21, 23, 25, 25, 25, 25, 23, 21},
+		{ 21, 23, 23, 23, 23, 23, 23, 21},
+		{ 21, 21, 21, 21, 21, 21, 21, 21}
+		};
+			//max=8
+			private double[,] KingRelativePositionValue ={
+		{ 3, 5, 5, 5, 5, 5, 5, 3},
+		{ 5, 8, 8, 8, 8, 8, 8, 5},
+		{ 5, 8, 8, 8, 8, 8, 8, 5},
+		{ 5, 8, 8, 8, 8, 8, 8, 5},
+		{ 5, 8, 8, 8, 8, 8, 8, 5},
+		{ 5, 8, 8, 8, 8, 8, 8, 5},
+		{ 5, 8, 8, 8, 8, 8, 8, 5},
+		{ 3, 5, 5, 5, 5, 5, 5, 3}
+		};
 	}
 }

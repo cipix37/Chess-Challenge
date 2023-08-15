@@ -119,11 +119,11 @@ public class MyBot : IChessBot
 				}
 				if (piece.IsKnight)
 				{
-					result = 3.5 + KnightRelativePositionValue2[f(row), f(col)] / 56;
+					result = 3.5 + KnightRelativePositionValue2[GetIndex(row,col)] / 56;
 				}
 				if (piece.IsBishop)
 				{
-					result = 3.5 + BishopRelativePositionValue2[f(row), f(col)] / 121;
+					result = 3.5 + BishopRelativePositionValue2[GetIndex(row, col)] / 121;
 				}
 				if (piece.IsRook)
 				{
@@ -131,11 +131,11 @@ public class MyBot : IChessBot
 				}
 				if (piece.IsQueen)
 				{
-					result = 10 + QueenRelativePositionValue2[f(row), f(col)] / 317;
+					result = 10 + (BishopRelativePositionValue2[GetIndex(row, col)] + 196) / 317;
 				}
 				if (piece.IsKing)
 				{
-					result = KingRelativePositionValue2[f(row), f(col)] / 512 / 2;
+					result = KingRelativePositionValue2[GetIndex(row, col)] / 512 / 2;
 				}
 				// player value
 				if (piece.IsWhite)
@@ -156,37 +156,25 @@ public class MyBot : IChessBot
 		//return -blackScore / whiteScore;
 	}
 
-	#region value tables
+	private int GetIndex(int row, int col)
+	{
+		int dummy;
+		row = row < 4 ? row : 7 - row;
+		col = col < 4 ? col : 7 - col;
+		if(col > row)
+		{
+			dummy = row;
+			row = col;
+			col = dummy;
+		}
+		return (int)(-row * row / 2 + 3.5 * row + col);
+	}
 
-	private int f(int x) => 3.5 > x ? x : 7 - x;
-
-	//max=56
-	private double[,] KnightRelativePositionValue2 ={
-	{ 12,18,23,26},
-	{ 18,24,32,37},
-	{ 23,32,42,48},
-	{ 26,37,48,56},
-	};
-	//max=121
-	private double[,] BishopRelativePositionValue2 ={
-	{ 73,67,63,61},
-	{ 67,85,81,79},
-	{ 63,81,101,99},
-	{ 61,79,99,121},
-	};
-	//max=317
-	private double[,] QueenRelativePositionValue2 ={
-	{ 269,263,259,257},
-	{ 263,281,277,275},
-	{ 259,277,297,295},
-	{ 257,275,295,317},
-	};
-	//max=512
-	private double[,] KingRelativePositionValue2 ={
-	{ 105,183,220,233},
-	{ 183,318,382,404},
-	{ 220,382,459,485},
-	{ 233,404,485,512},
-	};
-	#endregion
+	// max=56
+	private double[] KnightRelativePositionValue2 = { 12, 18, 23, 26, 24, 32, 37, 42, 48, 56 };
+	// max=121
+	private double[] BishopRelativePositionValue2 = { 73, 67, 63, 61, 85, 81, 79, 101, 99, 121 };
+	// rook max 196
+	// max=512
+	private double[] KingRelativePositionValue2 = { 105, 183, 220, 233, 318, 382, 404, 459, 485, 512 };
 }

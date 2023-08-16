@@ -42,7 +42,7 @@ namespace ChessChallenge.Example
 				moveValues[k] = DeepThink(timer, alfa, beta, -player).Item2;
 				if (player == 1)
 				{
-					if (moveValues[k] > bestMoveValue || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
+					if (moveValues[k] > bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
 					{
 						bestMoveIndex = k;
 						bestMoveValue = moveValues[k];
@@ -51,7 +51,7 @@ namespace ChessChallenge.Example
 				}
 				else
 				{
-					if (moveValues[k] < bestMoveValue || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
+					if (moveValues[k] < bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
 					{
 						bestMoveIndex = k;
 						bestMoveValue = moveValues[k];

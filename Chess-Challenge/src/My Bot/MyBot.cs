@@ -41,7 +41,7 @@ public class MyBot : IChessBot
 			moveValues[k] = DeepThink(timer, alfa, beta, -player).Item2;
 			if (player == 1)
 			{
-				if (moveValues[k] > bestMoveValue || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
+				if (moveValues[k] >= bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
 				{
 					bestMoveIndex = k;
 					bestMoveValue = moveValues[k];
@@ -50,7 +50,7 @@ public class MyBot : IChessBot
 			}
 			else
 			{
-				if (moveValues[k] < bestMoveValue || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
+				if (moveValues[k] <= bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
 				{
 					bestMoveIndex = k;
 					bestMoveValue = moveValues[k];
@@ -65,6 +65,7 @@ public class MyBot : IChessBot
 		return (moves[bestMoveIndex], bestMoveValue);
 	}
 
+	// not efficient to replace this in the method call
 	private double EndingEvaluation()
 	{
 		int color = globalBoard.IsWhiteToMove ? 1 : -1;
@@ -119,11 +120,11 @@ public class MyBot : IChessBot
 				}
 				if (piece.IsKnight)
 				{
-					result = 3.5 + KnightRelativePositionValue2[GetIndex(row,col)] / 56;
+					result = 3.5 + SquarePositionValue[f(row), f(col)] / 56;
 				}
 				if (piece.IsBishop)
 				{
-					result = 3.5 + BishopRelativePositionValue2[GetIndex(row, col)] / 121;
+					result = 3.5 + DiagonalPositionValue[f(row), f(col)] / 121;
 				}
 				if (piece.IsRook)
 				{
@@ -131,11 +132,11 @@ public class MyBot : IChessBot
 				}
 				if (piece.IsQueen)
 				{
-					result = 10 + (BishopRelativePositionValue2[GetIndex(row, col)] + 196) / 317;
+					result = 10 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317;
 				}
 				if (piece.IsKing)
 				{
-					result = KingRelativePositionValue2[GetIndex(row, col)] / 512 / 2;
+					result = SquarePositionValue[f(row), f(col)] / 112;
 				}
 				// player value
 				if (piece.IsWhite)
@@ -156,25 +157,24 @@ public class MyBot : IChessBot
 		//return -blackScore / whiteScore;
 	}
 
-	private int GetIndex(int row, int col)
-	{
-		int dummy;
-		row = row < 4 ? row : 7 - row;
-		col = col < 4 ? col : 7 - col;
-		if(col > row)
-		{
-			dummy = row;
-			row = col;
-			col = dummy;
-		}
-		return (int)(-row * row / 2 + 3.5 * row + col);
-	}
+	#region value tables
+
+	private int f(int x) => 3.5 > x ? x : 7 - x;
 
 	// max=56
-	private double[] KnightRelativePositionValue2 = { 12, 18, 23, 26, 24, 32, 37, 42, 48, 56 };
+	private double[,] SquarePositionValue ={
+	{ 12,18,23,26},
+	{ 18,24,32,37},
+	{ 23,32,42,48},
+	{ 26,37,48,56},
+	};
 	// max=121
-	private double[] BishopRelativePositionValue2 = { 73, 67, 63, 61, 85, 81, 79, 101, 99, 121 };
+	private double[,] DiagonalPositionValue ={
+	{ 73,67,63,61},
+	{ 67,85,81,79},
+	{ 63,81,101,99},
+	{ 61,79,99,121},
+	};
 	// rook max 196
-	// max=512
-	private double[] KingRelativePositionValue2 = { 105, 183, 220, 233, 318, 382, 404, 459, 485, 512 };
+	#endregion
 }

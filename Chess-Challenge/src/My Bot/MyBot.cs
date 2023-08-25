@@ -1,69 +1,158 @@
 ﻿using ChessChallenge.API;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 public class MyBot : IChessBot
 {
+	// transposition table
+	private class Transposition
+	{
+		public Move Move;
+		public double Value;
+		public int AnalyzedDepth;
+		public int MovesSinceLastHit;
+
+		public Transposition(double value, int analyzedDepth)
+		{
+			Value = value;
+			AnalyzedDepth = analyzedDepth;
+			MovesSinceLastHit = 0;
+		}
+
+		public Transposition(Move move)
+		{
+			Move = move;
+		}
+
+		public void UpdateTransposition(Transposition transposition)
+		{
+			Value = transposition.Value;
+			AnalyzedDepth = transposition.AnalyzedDepth;
+		}
+	}
+
+	private Dictionary<ulong, Transposition> transpositionTable = new Dictionary<ulong, Transposition>();
+
+	private void AddTransposition(ulong key, Transposition transposition)
+	{
+		if (!transpositionTable.ContainsKey(key))
+		{
+			transpositionTable.Add(key, transposition);
+		}
+		else
+		{
+			if (((Math.Abs(transpositionTable[key].Value + transposition.Value) < 1800) && transpositionTable[key].AnalyzedDepth < transposition.AnalyzedDepth) ||
+				(Math.Abs(transpositionTable[key].Value + transposition.Value) > 1800 && transpositionTable[key].AnalyzedDepth > transposition.AnalyzedDepth))
+			{
+				transpositionTable[key].Value = transposition.Value;
+				transpositionTable[key].AnalyzedDepth = transposition.AnalyzedDepth;
+				transpositionTable[key].MovesSinceLastHit = 0;
+			}
+		}
+	}
 
 	// global variables
 	private Board globalBoard;
 	private readonly Random random = new Random();
-	private int maxDepth = 4, currentDepth = 0, maxBreadth = 150000, currentBreadth = 1;
+	private int maxDepth = 4, currentDepth = 0, maxBreadth = 250000, currentBreadth = 1;
 
 	public Move Think(Board board, Timer timer)
 	{
 		globalBoard = board;
-		int alpha = -2000;
-		int beta = 2000;
-		int currentPlayer = board.IsWhiteToMove ? 1 : -1;
-		return DeepThink(timer, alpha, beta, currentPlayer).Item1;
+		Move move = DeepThink(timer, -2000, 2000, board.IsWhiteToMove ? 1 : -1).Move;
+
+		// clean transposition table
+		if (move.IsCapture || move.MovePieceType == PieceType.Pawn)
+		{
+			transpositionTable.Clear();
+		}
+		else
+		{
+			foreach ((ulong key, Transposition transposition) in transpositionTable)
+			{
+				transposition.MovesSinceLastHit++;
+				if (transposition.MovesSinceLastHit > transposition.AnalyzedDepth + 2)
+				{
+					transpositionTable.Remove(key);
+				}
+			}
+		}
+		return move;
 	}
 
-	private (Move, double) DeepThink(Timer timer, double alfa, double beta, int player)
+	private Transposition DeepThink(Timer timer, double alfa, double beta, int player)
 	{
-		int bestMoveIndex = -1;
-		double bestMoveValue = -2000 * player;
-
-		// determine moves and ending
-		Move[] moves = globalBoard.GetLegalMoves();
-		double[] moveValues = new double[moves.Length];
-
 		// if a leaf is reached return the static evaluation
 		if ((currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
 		{
-			return (new Move(), EndingEvaluation());
+			double value = EndingEvaluation();
+			AddTransposition(globalBoard.ZobristKey, new Transposition(value, 0));
+			return new Transposition(value, 0);
 		}
+
+		// initializations
+		int bestMoveIndex = -1;
+		double bestMoveValue = -2000 * player;
+		Transposition[] moves = globalBoard.GetLegalMoves().Select(move => new Transposition(move)).ToArray();
+
+		// sort moves
+		for (int k = 0; k < moves.Length; k++)
+		{
+			// move deepening part
+			globalBoard.MakeMove(moves[k].Move);
+			// check transposition table - only here
+			if (transpositionTable.ContainsKey(globalBoard.ZobristKey))
+			{
+				if (transpositionTable[globalBoard.ZobristKey].AnalyzedDepth > maxDepth - currentDepth)
+				{
+					moves[k].UpdateTransposition(transpositionTable[globalBoard.ZobristKey]);
+					transpositionTable[globalBoard.ZobristKey].MovesSinceLastHit = 0;
+				}
+			}
+			globalBoard.UndoMove(moves[k].Move);
+		}
+		moves.OrderBy(move => move.Value);
 
 		currentDepth++;
 		currentBreadth = currentBreadth * (moves.Length + 1);
 		for (int k = 0; k < moves.Length; k++)
 		{
-			globalBoard.MakeMove(moves[k]);
-			moveValues[k] = DeepThink(timer, alfa, beta, -player).Item2;
+			// move deepening part
+			globalBoard.MakeMove(moves[k].Move);
+			moves[k].UpdateTransposition(DeepThink(timer, alfa, beta, -player));
+			globalBoard.UndoMove(moves[k].Move);
+
+			// alpha-beta part
 			if (player == 1)
 			{
-				if (moveValues[k] >= bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
+				if (moves[k].Value > bestMoveValue)// || (moves[k].Value == bestMoveValue && random.Next(100) < 25))
 				{
 					bestMoveIndex = k;
-					bestMoveValue = moveValues[k];
+					bestMoveValue = moves[k].Value;
 				}
 				alfa = Math.Max(alfa, bestMoveValue);
 			}
 			else
 			{
-				if (moveValues[k] <= bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
+				if (moves[k].Value < bestMoveValue)// || (moves[k].Value == bestMoveValue && random.Next(100) < 25))
 				{
 					bestMoveIndex = k;
-					bestMoveValue = moveValues[k];
+					bestMoveValue = moves[k].Value;
 				}
 				beta = Math.Min(beta, bestMoveValue);
 			}
-			globalBoard.UndoMove(moves[k]);
 			if (alfa > beta) break;
 		}
 		currentBreadth = currentBreadth / (moves.Length + 1);
 		currentDepth--;
-		return (moves[bestMoveIndex], bestMoveValue);
+
+		AddTransposition(globalBoard.ZobristKey, new Transposition(bestMoveValue, moves[bestMoveIndex].AnalyzedDepth + 1));
+		moves[bestMoveIndex].AnalyzedDepth++;
+		return moves[bestMoveIndex];
 	}
+
+	#region Evaluation
 
 	// not efficient to replace this in the method call
 	private double EndingEvaluation()
@@ -157,7 +246,7 @@ public class MyBot : IChessBot
 		//return -blackScore / whiteScore;
 	}
 
-	#region value tables
+	#region Value Tables
 
 	private int f(int x) => 3.5 > x ? x : 7 - x;
 
@@ -176,5 +265,7 @@ public class MyBot : IChessBot
 	{ 61,79,99,121},
 	};
 	// rook max 196
+	#endregion
+
 	#endregion
 }

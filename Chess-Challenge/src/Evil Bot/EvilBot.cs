@@ -66,6 +66,7 @@ namespace ChessChallenge.Example
 			return (moves[bestMoveIndex], bestMoveValue);
 		}
 
+		// not efficient to replace this in the method call
 		private double EndingEvaluation()
 		{
 			int color = globalBoard.IsWhiteToMove ? 1 : -1;
@@ -120,11 +121,11 @@ namespace ChessChallenge.Example
 					}
 					if (piece.IsKnight)
 					{
-						result = 3.5 + KnightRelativePositionValue2[f(row), f(col)] / 56;
+						result = 3.25 + Square(row, col) / 2;
 					}
 					if (piece.IsBishop)
 					{
-						result = 3.5 + BishopRelativePositionValue2[f(row), f(col)] / 121;
+						result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 121 / 2;
 					}
 					if (piece.IsRook)
 					{
@@ -132,11 +133,11 @@ namespace ChessChallenge.Example
 					}
 					if (piece.IsQueen)
 					{
-						result = 10 + (BishopRelativePositionValue2[f(row), f(col)] + 196) / 317;
+						result = 9.75 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317 / 2;
 					}
 					if (piece.IsKing)
 					{
-						result = KingRelativePositionValue2[f(row), f(col)] / 512 / 2;
+						result = Square(row, col) / 5;
 					}
 					// player value
 					if (piece.IsWhite)
@@ -160,29 +161,18 @@ namespace ChessChallenge.Example
 		#region value tables
 
 		private int f(int x) => 3.5 > x ? x : 7 - x;
+		private double g(int x) => Math.Sin(Math.PI * x / 7);
 
-		// max=56
-		private double[,] KnightRelativePositionValue2 ={
-	{ 12,18,23,26},
-	{ 18,24,32,37},
-	{ 23,32,42,48},
-	{ 26,37,48,56},
-	};
+		private double Square(int row, int col) => (g(row) + g(col)) / 2;
+
 		// max=121
-		private double[,] BishopRelativePositionValue2 ={
+		private double[,] DiagonalPositionValue ={
 	{ 73,67,63,61},
 	{ 67,85,81,79},
 	{ 63,81,101,99},
 	{ 61,79,99,121},
 	};
 		// rook max 196
-		// max=512
-		private double[,] KingRelativePositionValue2 ={
-	{ 105,183,220,233},
-	{ 183,318,382,404},
-	{ 220,382,459,485},
-	{ 233,404,485,512},
-	};
 		#endregion
 	}
 }

@@ -3,7 +3,6 @@ using System;
 
 public class MyBot : IChessBot
 {
-
 	// global variables
 	private Board globalBoard;
 	private readonly Random random = new Random();
@@ -41,7 +40,7 @@ public class MyBot : IChessBot
 			moveValues[k] = DeepThink(timer, alfa, beta, -player).Item2;
 			if (player == 1)
 			{
-				if (moveValues[k] >= bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
+				if (moveValues[k] > bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
 				{
 					bestMoveIndex = k;
 					bestMoveValue = moveValues[k];
@@ -50,7 +49,7 @@ public class MyBot : IChessBot
 			}
 			else
 			{
-				if (moveValues[k] <= bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
+				if (moveValues[k] < bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
 				{
 					bestMoveIndex = k;
 					bestMoveValue = moveValues[k];
@@ -120,11 +119,11 @@ public class MyBot : IChessBot
 				}
 				if (piece.IsKnight)
 				{
-					result = 3.5 + SquarePositionValue[f(row), f(col)] / 56;
+					result = 3.25 + Square(row, col) / 2;
 				}
 				if (piece.IsBishop)
 				{
-					result = 3.5 + DiagonalPositionValue[f(row), f(col)] / 121;
+					result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 121 / 2;
 				}
 				if (piece.IsRook)
 				{
@@ -132,11 +131,11 @@ public class MyBot : IChessBot
 				}
 				if (piece.IsQueen)
 				{
-					result = 10 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317;
+					result = 9.75 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317 / 2;
 				}
 				if (piece.IsKing)
 				{
-					result = SquarePositionValue[f(row), f(col)] / 112;
+					result = Square(row, col) / 5;
 				}
 				// player value
 				if (piece.IsWhite)
@@ -160,14 +159,10 @@ public class MyBot : IChessBot
 	#region value tables
 
 	private int f(int x) => 3.5 > x ? x : 7 - x;
+	private double g(int x) => Math.Sin(Math.PI * x / 7);
 
-	// max=56
-	private double[,] SquarePositionValue ={
-	{ 12,18,23,26},
-	{ 18,24,32,37},
-	{ 23,32,42,48},
-	{ 26,37,48,56},
-	};
+	private double Square(int row, int col) => (g(row) + g(col)) / 2;
+
 	// max=121
 	private double[,] DiagonalPositionValue ={
 	{ 73,67,63,61},

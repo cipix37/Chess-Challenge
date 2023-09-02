@@ -1,12 +1,13 @@
 ﻿using ChessChallenge.API;
 using System;
+using System.Linq;
 
 public class MyBot : IChessBot
 {
 	// global variables
 	private Board globalBoard;
 	private readonly Random random = new Random();
-	private int maxDepth = 4, currentDepth = 0, maxBreadth = 150000, currentBreadth = 1;
+	private int maxDepth = 5, currentDepth = 0, maxBreadth = 150000, currentBreadth = 1;
 
 	public Move Think(Board board, Timer timer)
 	{
@@ -19,18 +20,22 @@ public class MyBot : IChessBot
 
 	private (Move, double) DeepThink(Timer timer, double alfa, double beta, int player)
 	{
-		int bestMoveIndex = -1;
-		double bestMoveValue = -2000 * player;
-
-		// determine moves and ending
-		Move[] moves = globalBoard.GetLegalMoves();
-		double[] moveValues = new double[moves.Length];
-
 		// if a leaf is reached return the static evaluation
 		if ((currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
 		{
 			return (new Move(), EndingEvaluation());
 		}
+
+		// initializations
+		int bestMoveIndex = -1;
+		double bestMoveValue = -2000 * player;
+		Move[] moves = globalBoard.GetLegalMoves();
+		double[] moveValues = new double[moves.Length];
+
+		// sort moves
+		moves = moves.OrderByDescending(move => ((int)move.CapturePieceType))
+			.ThenBy(move => (int)globalBoard.GetPiece(move.StartSquare).PieceType)
+			.ToArray();
 
 		currentDepth++;
 		currentBreadth = currentBreadth * (moves.Length + 1);
@@ -38,6 +43,8 @@ public class MyBot : IChessBot
 		{
 			globalBoard.MakeMove(moves[k]);
 			moveValues[k] = DeepThink(timer, alfa, beta, -player).Item2;
+			globalBoard.UndoMove(moves[k]);
+
 			if (player == 1)
 			{
 				if (moveValues[k] > bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
@@ -56,7 +63,6 @@ public class MyBot : IChessBot
 				}
 				beta = Math.Min(beta, bestMoveValue);
 			}
-			globalBoard.UndoMove(moves[k]);
 			if (alfa > beta) break;
 		}
 		currentBreadth = currentBreadth / (moves.Length + 1);

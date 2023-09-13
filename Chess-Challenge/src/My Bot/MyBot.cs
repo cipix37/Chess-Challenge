@@ -1,4 +1,5 @@
 ﻿using ChessChallenge.API;
+using MyChess = ChessChallenge.Chess;
 using System;
 using System.Linq;
 
@@ -8,6 +9,7 @@ public class MyBot : IChessBot
 	private Board globalBoard;
 	private readonly Random random = new Random();
 	private int maxDepth = 5, currentDepth = 0, maxBreadth = 150000, currentBreadth = 1;
+	private int[,] Stats = new int[10, 50];
 
 	public Move Think(Board board, Timer timer)
 	{
@@ -67,6 +69,7 @@ public class MyBot : IChessBot
 		}
 		currentBreadth = currentBreadth / (moves.Length + 1);
 		currentDepth--;
+		Stats[currentDepth,bestMoveIndex]++;
 		return (moves[bestMoveIndex], bestMoveValue);
 	}
 
@@ -98,29 +101,70 @@ public class MyBot : IChessBot
 			for (int col = 0; col < 8; col++)
 			{
 				// piece value
-				Piece piece = globalBoard.GetPiece(new Square(col, row));
+				Square square = new Square(col, row);
+				Piece piece = globalBoard.GetPiece(square);
 				result = 0;
 				if (piece.IsPawn)
 				{
-					if (piece.IsWhite)
+					if (PassedPawn(square))
 					{
-						switch (row)
+						if (piece.IsWhite)
 						{
-							case 6: { result = 4.5; break; }
-							case 5: { result = 1.5; break; }
-							case 4: { result = 1.1; break; }
-							default: { result = 1; break; }
+							switch (row)
+							{
+								case 6: { result = 4.5; break; }
+								case 5: { result = 2.5; break; }
+								case 4: { result = 1.5; break; }
+								case 3: { result = 1.3; break; }
+								default: { result = 1.1; break; }
+							}
+						}
+						else
+						{
+							switch (row)
+							{
+								case 1: { result = 4.5; break; }
+								case 2: { result = 2.5; break; }
+								case 3: { result = 1.5; break; }
+								case 4: { result = 1.3; break; }
+								default: { result = 1.1; break; }
+							}
 						}
 					}
 					else
 					{
-						switch (row)
+						if (piece.IsWhite)
 						{
-							case 1: { result = 4.5; break; }
-							case 2: { result = 1.5; break; }
-							case 3: { result = 1.1; break; }
-							default: { result = 1; break; }
+							switch (row)
+							{
+								case 6: { result = 4.5; break; }
+								case 5: { result = 1.5; break; }
+								case 4: { result = 1.1; break; }
+								default: { result = 1; break; }
+							}
 						}
+						else
+						{
+							switch (row)
+							{
+								case 1: { result = 4.5; break; }
+								case 2: { result = 1.5; break; }
+								case 3: { result = 1.1; break; }
+								default: { result = 1; break; }
+							}
+						}
+					}
+					if (IsolatedPawn(square))
+					{
+						result -= 0.15;
+					}
+					if (BackwardPawn(square))
+					{
+						result -= 0.15;
+					}
+					if (MultiplePawn(square))
+					{
+						result -= 0.2;
 					}
 				}
 				if (piece.IsKnight)
@@ -160,6 +204,40 @@ public class MyBot : IChessBot
 		//	return whiteScore / blackScore;
 		//}
 		//return -blackScore / whiteScore;
+	}
+
+	private bool PassedPawn(Square square)
+	{
+		if (globalBoard.GetPiece(square).IsWhite)
+		{
+			return (MyChess.Bits.WhitePassedPawnMask[square.Index] & globalBoard.GetPieceBitboard(PieceType.Pawn, false)) == 0;
+		}
+
+		return (MyChess.Bits.BlackPassedPawnMask[square.Index] & globalBoard.GetPieceBitboard(PieceType.Pawn, true)) == 0;
+	}
+
+	private bool BackwardPawn(Square square)
+	{
+		int rank = MyChess.BoardHelper.RankIndex(square.Index);
+		ulong WhiteBackwardMask = ((1ul << 8 * (rank + 1)) - 1);
+		ulong BlackBackwardMask = ~(ulong.MaxValue >> (64 - 8 * rank));
+		if (globalBoard.GetPiece(square).IsWhite)
+		{
+			return (WhiteBackwardMask & MyChess.Bits.AdjacentFileMasks[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, true)) == 0;
+		}
+		return (BlackBackwardMask & MyChess.Bits.AdjacentFileMasks[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, false)) == 0;
+	}
+
+	private bool MultiplePawn(Square square)
+	{
+		return BitboardHelper.GetNumberOfSetBits(
+			MyChess.Bits.FileMask[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, globalBoard.GetPiece(square).IsWhite)
+			) > 1;
+	}
+
+	private bool IsolatedPawn(Square square)
+	{
+		return (MyChess.Bits.AdjacentFileMasks[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, globalBoard.GetPiece(square).IsWhite)) == 0;
 	}
 
 	#region value tables

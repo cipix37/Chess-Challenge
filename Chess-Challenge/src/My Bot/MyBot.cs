@@ -9,6 +9,7 @@ public class MyBot : IChessBot
 	private Board globalBoard;
 	private readonly Random random = new Random();
 	private int maxDepth = 5, currentDepth = 0, maxBreadth = 150000, currentBreadth = 1;
+	private Move dummyMove;
 
 	public Move Think(Board board, Timer timer)
 	{
@@ -24,7 +25,14 @@ public class MyBot : IChessBot
 		// if a leaf is reached return the static evaluation
 		if ((currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
 		{
-			return (new Move(), EndingEvaluation());
+			int color = globalBoard.IsWhiteToMove ? 1 : -1;
+			if (globalBoard.IsInsufficientMaterial())
+				return (dummyMove, 0);
+			if (globalBoard.IsInCheckmate())
+				return (dummyMove, -color * (1000 - currentDepth));
+			if (globalBoard.IsFiftyMoveDraw() || globalBoard.IsInStalemate() || globalBoard.IsRepeatedPosition())
+				return (dummyMove, color * 500 * Math.Sign(StaticEvaluation()));
+			return (dummyMove, StaticEvaluation());
 		}
 
 		// initializations
@@ -71,25 +79,7 @@ public class MyBot : IChessBot
 		return (moves[bestMoveIndex], bestMoveValue);
 	}
 
-	// not efficient to replace this in the method call
-	private double EndingEvaluation()
-	{
-		int color = globalBoard.IsWhiteToMove ? 1 : -1;
-
-		if (globalBoard.IsInCheckmate())
-		{
-			return -color * (1000 - currentDepth);
-		}
-		if (globalBoard.IsInsufficientMaterial())
-		{
-			return 0;
-		}
-		if (globalBoard.IsFiftyMoveDraw() || globalBoard.IsInStalemate() || globalBoard.IsRepeatedPosition())
-		{
-			return color * 500 * Math.Sign(StaticEvaluation());
-		}
-		return StaticEvaluation();
-	}
+	#region evaluation
 
 	private double StaticEvaluation()
 	{
@@ -205,8 +195,6 @@ public class MyBot : IChessBot
 		return (MyChess.Bits.AdjacentFileMasks[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, globalBoard.GetPiece(square).IsWhite)) == 0;
 	}
 
-	#region value tables
-
 	private int f(int x) => 3.5 > x ? x : 7 - x;
 	private double g(int x) => Math.Sin(Math.PI * x / 7);
 
@@ -220,5 +208,6 @@ public class MyBot : IChessBot
 	{ 61,79,99,121},
 	};
 	// rook max 196
+
 	#endregion
 }

@@ -1,16 +1,17 @@
 ﻿using ChessChallenge.API;
 using System;
 using System.Linq;
+using MyChess = ChessChallenge.Chess;
 
 namespace ChessChallenge.Example
 {
 	public class EvilBot : IChessBot
 	{
-
 		// global variables
 		private Board globalBoard;
 		private readonly Random random = new Random();
 		private int maxDepth = 5, currentDepth = 0, maxBreadth = 150000, currentBreadth = 1;
+		private Move dummyMove;
 
 		public Move Think(Board board, Timer timer)
 		{
@@ -26,7 +27,14 @@ namespace ChessChallenge.Example
 			// if a leaf is reached return the static evaluation
 			if ((currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
 			{
-				return (new Move(), EndingEvaluation());
+				int color = globalBoard.IsWhiteToMove ? 1 : -1;
+				if (globalBoard.IsInsufficientMaterial())
+					return (dummyMove, 0);
+				if (globalBoard.IsInCheckmate())
+					return (dummyMove, -color * (1000 - currentDepth));
+				if (globalBoard.IsFiftyMoveDraw() || globalBoard.IsInStalemate() || globalBoard.IsRepeatedPosition())
+					return (dummyMove, color * 500 * Math.Sign(StaticEvaluation()));
+				return (dummyMove, StaticEvaluation());
 			}
 
 			// initializations
@@ -73,25 +81,7 @@ namespace ChessChallenge.Example
 			return (moves[bestMoveIndex], bestMoveValue);
 		}
 
-		// not efficient to replace this in the method call
-		private double EndingEvaluation()
-		{
-			int color = globalBoard.IsWhiteToMove ? 1 : -1;
-
-			if (globalBoard.IsInCheckmate())
-			{
-				return -color * (1000 - currentDepth);
-			}
-			if (globalBoard.IsInsufficientMaterial())
-			{
-				return 0;
-			}
-			if (globalBoard.IsFiftyMoveDraw() || globalBoard.IsInStalemate() || globalBoard.IsRepeatedPosition())
-			{
-				return color * 500 * Math.Sign(StaticEvaluation());
-			}
-			return StaticEvaluation();
-		}
+		#region evaluation
 
 		private double StaticEvaluation()
 		{
@@ -101,60 +91,71 @@ namespace ChessChallenge.Example
 				for (int col = 0; col < 8; col++)
 				{
 					// piece value
-					Piece piece = globalBoard.GetPiece(new Square(col, row));
+					Square square = new Square(col, row);
+					Piece piece = globalBoard.GetPiece(square);
 					result = 0;
 					if (piece.IsPawn)
 					{
-						if (piece.IsWhite)
+						if (PassedPawn(square))
 						{
-							switch (row)
+							if (piece.IsWhite)
 							{
-								case 6: { result = 4.5; break; }
-								case 5: { result = 1.5; break; }
-								case 4: { result = 1.1; break; }
-								default: { result = 1; break; }
+								switch (row)
+								{
+									case 6: result = 4.5; break;
+									case 5: result = 2.5; break;
+									case 4: result = 1.5; break;
+									case 3: result = 1.3; break;
+									default: result = 1.1; break;
+								}
+							}
+							else
+							{
+								switch (row)
+								{
+									case 1: result = 4.5; break;
+									case 2: result = 2.5; break;
+									case 3: result = 1.5; break;
+									case 4: result = 1.3; break;
+									default: result = 1.1; break;
+								}
 							}
 						}
 						else
 						{
-							switch (row)
+							if (piece.IsWhite)
 							{
-								case 1: { result = 4.5; break; }
-								case 2: { result = 1.5; break; }
-								case 3: { result = 1.1; break; }
-								default: { result = 1; break; }
+								switch (row)
+								{
+									case 6: result = 4.5; break;
+									case 5: result = 1.5; break;
+									case 4: result = 1.1; break;
+									default: result = 1; break;
+								}
+							}
+							else
+							{
+								switch (row)
+								{
+									case 1: result = 4.5; break;
+									case 2: result = 1.5; break;
+									case 3: result = 1.1; break;
+									default: result = 1; break;
+								}
 							}
 						}
+						if (IsolatedPawn(square)) result -= 0.15;
+						//if (BackwardPawn(square)) result -= 0.1;
+						if (MultiplePawn(square)) result -= 0.1;
 					}
-					if (piece.IsKnight)
-					{
-						result = 3.25 + Square(row, col) / 2;
-					}
-					if (piece.IsBishop)
-					{
-						result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 121 / 2;
-					}
-					if (piece.IsRook)
-					{
-						result = 5;
-					}
-					if (piece.IsQueen)
-					{
-						result = 9.75 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317 / 2;
-					}
-					if (piece.IsKing)
-					{
-						result = Square(row, col) / 5;
-					}
+					if (piece.IsKnight) result = 3.25 + Square(row, col) / 2;
+					if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 121 / 2;
+					if (piece.IsRook) result = 5;
+					if (piece.IsQueen) result = 9.75 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317 / 2;
+					if (piece.IsKing) result = Square(row, col) / 5;
 					// player value
-					if (piece.IsWhite)
-					{
-						whiteScore += result;
-					}
-					else
-					{
-						blackScore += result;
-					}
+					if (piece.IsWhite) whiteScore += result;
+					else blackScore += result;
 				}
 			}
 			return whiteScore - blackScore;
@@ -165,7 +166,36 @@ namespace ChessChallenge.Example
 			//return -blackScore / whiteScore;
 		}
 
-		#region value tables
+		private bool PassedPawn(Square square)
+		{
+			if (globalBoard.GetPiece(square).IsWhite)
+				return (MyChess.Bits.WhitePassedPawnMask[square.Index] & globalBoard.GetPieceBitboard(PieceType.Pawn, false)) == 0;
+			return (MyChess.Bits.BlackPassedPawnMask[square.Index] & globalBoard.GetPieceBitboard(PieceType.Pawn, true)) == 0;
+		}
+
+		//private bool BackwardPawn(Square square)
+		//{
+		//	int rank = MyChess.BoardHelper.RankIndex(square.Index);
+		//	ulong WhiteBackwardMask = ((1ul << 8 * (rank + 1)) - 1);
+		//	ulong BlackBackwardMask = ~(ulong.MaxValue >> (64 - 8 * rank));
+		//	if (globalBoard.GetPiece(square).IsWhite)
+		//	{
+		//		return (WhiteBackwardMask & MyChess.Bits.AdjacentFileMasks[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, true)) == 0;
+		//	}
+		//	return (BlackBackwardMask & MyChess.Bits.AdjacentFileMasks[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, false)) == 0;
+		//}
+
+		private bool MultiplePawn(Square square)
+		{
+			return BitboardHelper.GetNumberOfSetBits(
+				MyChess.Bits.FileMask[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, globalBoard.GetPiece(square).IsWhite)
+				) > 1;
+		}
+
+		private bool IsolatedPawn(Square square)
+		{
+			return (MyChess.Bits.AdjacentFileMasks[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, globalBoard.GetPiece(square).IsWhite)) == 0;
+		}
 
 		private int f(int x) => 3.5 > x ? x : 7 - x;
 		private double g(int x) => Math.Sin(Math.PI * x / 7);
@@ -180,6 +210,7 @@ namespace ChessChallenge.Example
 	{ 61,79,99,121},
 	};
 		// rook max 196
+
 		#endregion
 	}
 }

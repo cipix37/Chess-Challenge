@@ -2,29 +2,76 @@
 using MyChess = ChessChallenge.Chess;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 
 public class MyBot : IChessBot
 {
 	// global variables
 	private Board globalBoard;
 	private readonly Random random = new Random();
-	private int maxDepth = 5, currentDepth = 0, maxBreadth = 150000, currentBreadth = 1;
+	private int currentMaxDepth, currentDepth = 0, maxBreadth, currentBreadth = 1;
 	private Move dummyMove;
+	private static int[] DepthAverageTimes = { 385, 385, 385, 385, 697, 2965, 19294, 168007 };
+	private IEnumerable<int> DepthRange = Enumerable.Range(0, DepthAverageTimes.Length);
 
 	public Move Think(Board board, Timer timer)
 	{
+		//ChessChallenge.Application.ConsoleHelper.Log("### Start turn ###");
+		//ChessChallenge.Application.ConsoleHelper.Log($"Time remaining: {timer.MillisecondsRemaining}-{timer.OpponentMillisecondsRemaining}");
+
 		globalBoard = board;
-		int alpha = -2000;
-		int beta = 2000;
-		int currentPlayer = board.IsWhiteToMove ? 1 : -1;
-		return DeepThink(timer, alpha, beta, currentPlayer).Item1;
+
+		// set defaut search depth
+		int defaultDepth = DepthRange.LastOrDefault(k => DepthAverageTimes[k] < timer.GameStartTimeMilliseconds / 20);
+		currentMaxDepth = defaultDepth;
+		//ChessChallenge.Application.ConsoleHelper.Log($"Defaut depth = {currentMaxDepth}");
+		//ChessChallenge.Application.ConsoleHelper.Log($"Ply count = {globalBoard.PlyCount}");
+
+		// adjust search depth
+		if (globalBoard.PlyCount > 16) // no need to overthink first couple of moves
+		{
+			// if I have enough time to search more depth, then do it
+			// returns 0 if opponent has more time
+			currentMaxDepth = Math.Max(currentMaxDepth,
+				DepthRange.LastOrDefault(k => timer.MillisecondsRemaining - DepthAverageTimes[k] > timer.OpponentMillisecondsRemaining));
+			//ChessChallenge.Application.ConsoleHelper.Log($"current Max Depth 1 = {currentMaxDepth}");
+
+			// if there is a lot of remaining time in the match, then search more depth
+			// returns 0 if no depth satisfies equation
+			currentMaxDepth = Math.Max(currentMaxDepth,
+				DepthRange.LastOrDefault(k => timer.MillisecondsRemaining - DepthAverageTimes[k] > timer.GameStartTimeMilliseconds / 6));
+			//ChessChallenge.Application.ConsoleHelper.Log($"current Max Depth 2 = {currentMaxDepth}");
+
+			// time crisis -> need to work on this to account for the time diff
+			if (currentMaxDepth == defaultDepth)
+			{
+				if (timer.MillisecondsRemaining < timer.OpponentMillisecondsRemaining)
+				{
+					currentMaxDepth = 4;
+				}
+			}
+		}
+
+		// set max breadth depending on depth
+		maxBreadth = (int)Math.Pow(10, currentMaxDepth);
+
+		//ChessChallenge.Application.ConsoleHelper.Log($"max depth = {currentMaxDepth}");
+		//ChessChallenge.Application.ConsoleHelper.Log($"max Breadth = {maxBreadth}");
+		//ChessChallenge.Application.ConsoleHelper.Log(m.ToString());
+		//ChessChallenge.Application.ConsoleHelper.Log($"Time used: {timer.MillisecondsElapsedThisTurn}");
+		//ChessChallenge.Application.ConsoleHelper.Log($"Time remaining: {timer.MillisecondsRemaining}-{timer.OpponentMillisecondsRemaining}");
+		//ChessChallenge.Application.ConsoleHelper.Log("### End turn ###\n");
+
+		return DeepThink(timer, -2000, 2000, board.IsWhiteToMove ? 1 : -1).Item1;
 	}
 
 	private (Move, double) DeepThink(Timer timer, double alfa, double beta, int player)
 	{
 		// if a leaf is reached return the static evaluation
-		if ((currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
+		//if (currentDepth >= currentMaxDepth || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
+		if ((currentDepth >= currentMaxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
 		{
+			//ChessChallenge.Application.ConsoleHelper.Log($"current depth = {currentDepth} current breadth = {currentBreadth}");
 			int color = globalBoard.IsWhiteToMove ? 1 : -1;
 			if (globalBoard.IsInsufficientMaterial())
 				return (dummyMove, 0);
@@ -47,7 +94,7 @@ public class MyBot : IChessBot
 			.ToArray();
 
 		currentDepth++;
-		currentBreadth = currentBreadth * (moves.Length + 1);
+		currentBreadth *= (2 + moves.Length / 3);
 		for (int k = 0; k < moves.Length; k++)
 		{
 			globalBoard.MakeMove(moves[k]);
@@ -74,8 +121,9 @@ public class MyBot : IChessBot
 			}
 			if (alfa > beta) break;
 		}
-		currentBreadth = currentBreadth / (moves.Length + 1);
+		currentBreadth /= (2 + moves.Length / 3);
 		currentDepth--;
+
 		return (moves[bestMoveIndex], bestMoveValue);
 	}
 
@@ -94,57 +142,57 @@ public class MyBot : IChessBot
 				result = 0;
 				if (piece.IsPawn)
 				{
-					if (PassedPawn(square))
+					//if (PassedPawn(square))
+					//{
+					//	if (piece.IsWhite)
+					//	{
+					//		switch (row)
+					//		{
+					//			case 6: result = 4.5; break;
+					//			case 5: result = 2.5; break;
+					//			case 4: result = 1.5; break;
+					//			case 3: result = 1.3; break;
+					//			default: result = 1.1; break;
+					//		}
+					//	}
+					//	else
+					//	{
+					//		switch (row)
+					//		{
+					//			case 1: result = 4.5; break;
+					//			case 2: result = 2.5; break;
+					//			case 3: result = 1.5; break;
+					//			case 4: result = 1.3; break;
+					//			default: result = 1.1; break;
+					//		}
+					//	}
+					//}
+					//else
+					//{
+					if (piece.IsWhite)
 					{
-						if (piece.IsWhite)
+						switch (row)
 						{
-							switch (row)
-							{
-								case 6: result = 4.5; break;
-								case 5: result = 2.5; break;
-								case 4: result = 1.5; break;
-								case 3: result = 1.3; break;
-								default: result = 1.1; break;
-							}
-						}
-						else
-						{
-							switch (row)
-							{
-								case 1: result = 4.5; break;
-								case 2: result = 2.5; break;
-								case 3: result = 1.5; break;
-								case 4: result = 1.3; break;
-								default: result = 1.1; break;
-							}
+							case 6: result = 4.5; break;
+							case 5: result = 1.5; break;
+							case 4: result = 1.1; break;
+							default: result = 1; break;
 						}
 					}
 					else
 					{
-						if (piece.IsWhite)
+						switch (row)
 						{
-							switch (row)
-							{
-								case 6: result = 4.5; break; 
-								case 5: result = 1.5; break; 
-								case 4: result = 1.1; break; 
-								default: result = 1; break; 
-							}
-						}
-						else
-						{
-							switch (row)
-							{
-								case 1: result = 4.5; break;
-								case 2: result = 1.5; break;
-								case 3: result = 1.1; break;
-								default: result = 1; break;
-							}
+							case 1: result = 4.5; break;
+							case 2: result = 1.5; break;
+							case 3: result = 1.1; break;
+							default: result = 1; break;
 						}
 					}
-					if (IsolatedPawn(square)) result -= 0.15;
-					//if (BackwardPawn(square)) result -= 0.1;
-					if (MultiplePawn(square)) result -= 0.1;
+					//}
+					//if (IsolatedPawn(square)) result -= 0.15;
+					////if (BackwardPawn(square)) result -= 0.1;
+					//if (MultiplePawn(square)) result -= 0.1;
 				}
 				if (piece.IsKnight) result = 3.25 + Square(row, col) / 2;
 				if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 121 / 2;

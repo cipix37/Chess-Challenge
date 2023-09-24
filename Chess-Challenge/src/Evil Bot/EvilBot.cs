@@ -96,33 +96,33 @@ namespace ChessChallenge.Example
 					result = 0;
 					if (piece.IsPawn)
 					{
-						if (PassedPawn(square))
-						{
-							if (piece.IsWhite)
-							{
-								switch (row)
-								{
-									case 6: result = 4.5; break;
-									case 5: result = 2.5; break;
-									case 4: result = 1.5; break;
-									case 3: result = 1.3; break;
-									default: result = 1.1; break;
-								}
-							}
-							else
-							{
-								switch (row)
-								{
-									case 1: result = 4.5; break;
-									case 2: result = 2.5; break;
-									case 3: result = 1.5; break;
-									case 4: result = 1.3; break;
-									default: result = 1.1; break;
-								}
-							}
-						}
-						else
-						{
+						//if (PassedPawn(square))
+						//{
+						//	if (piece.IsWhite)
+						//	{
+						//		switch (row)
+						//		{
+						//			case 6: result = 4.5; break;
+						//			case 5: result = 2.5; break;
+						//			case 4: result = 1.5; break;
+						//			case 3: result = 1.3; break;
+						//			default: result = 1.1; break;
+						//		}
+						//	}
+						//	else
+						//	{
+						//		switch (row)
+						//		{
+						//			case 1: result = 4.5; break;
+						//			case 2: result = 2.5; break;
+						//			case 3: result = 1.5; break;
+						//			case 4: result = 1.3; break;
+						//			default: result = 1.1; break;
+						//		}
+						//	}
+						//}
+						//else
+						//{
 							if (piece.IsWhite)
 							{
 								switch (row)
@@ -143,10 +143,10 @@ namespace ChessChallenge.Example
 									default: result = 1; break;
 								}
 							}
-						}
-						if (IsolatedPawn(square)) result -= 0.15;
+						//}
+						//if (IsolatedPawn(square)) result -= 0.15;
 						//if (BackwardPawn(square)) result -= 0.1;
-						if (MultiplePawn(square)) result -= 0.1;
+						//if (MultiplePawn(square)) result -= 0.1;
 					}
 					if (piece.IsKnight) result = 3.25 + Square(row, col) / 2;
 					if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 121 / 2;

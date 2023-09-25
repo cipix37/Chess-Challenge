@@ -2,6 +2,7 @@
 using MyChess = ChessChallenge.Chess;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 
 public class MyBot : IChessBot
 {
@@ -10,14 +11,30 @@ public class MyBot : IChessBot
 	private readonly Random random = new Random();
 	private int maxDepth = 5, currentDepth = 0, maxBreadth = 150000, currentBreadth = 1;
 	private Move dummyMove;
+	private Dictionary<Move, double> killerMoves = new Dictionary<Move, double>();
+
+	private double GetKillerMove(Move move)
+	{
+		if (killerMoves.ContainsKey(move)) return killerMoves[move];
+		return 0;
+	}
 
 	public Move Think(Board board, Timer timer)
 	{
 		globalBoard = board;
-		int alpha = -2000;
-		int beta = 2000;
-		int currentPlayer = board.IsWhiteToMove ? 1 : -1;
-		return DeepThink(timer, alpha, beta, currentPlayer).Item1;
+
+		// shallow search
+		//int fullMaxDepth = maxDepth;
+		//maxDepth = 4;
+		//dummyMove = DeepThink(timer, -2000, 2000, board.IsWhiteToMove ? 1 : -1).Item1;
+		// full depth search
+		//maxDepth = fullMaxDepth;
+		dummyMove = DeepThink(timer, -2000, 2000, board.IsWhiteToMove ? 1 : -1).Item1;
+		//if (dummyMove.IsCapture || dummyMove.MovePieceType == PieceType.Pawn)
+		//{
+		//	killerMoves.Clear();
+		//}
+		return dummyMove;
 	}
 
 	private (Move, double) DeepThink(Timer timer, double alfa, double beta, int player)
@@ -38,12 +55,21 @@ public class MyBot : IChessBot
 		// initializations
 		int bestMoveIndex = -1;
 		double bestMoveValue = -2000 * player;
-		Move[] moves = globalBoard.GetLegalMoves();
+		//Move[] moves = new Move[]();
+		Span<Move> moves = new Span<Move>();
+		globalBoard.GetLegalMovesNonAlloc(ref moves);
+		//Move[] moves = globalBoard.GetLegalMoves();
+		// if(currentDepth > maxDepth) moves = globalBoard.get
 		double[] moveValues = new double[moves.Length];
 
 		// sort moves
-		moves = moves.OrderByDescending(move => ((int)move.CapturePieceType))
+		//moves = moves.OrderByDescending(move => killerMoves.ContainsKey(move) ? killerMoves[move] : 0)
+		//	.ThenByDescending(move => (int)move.CapturePieceType)
+		//	.ThenBy(move => (int)globalBoard.GetPiece(move.StartSquare).PieceType)
+		//	.ToArray();
+		moves = moves.ToArray().OrderByDescending(move => (int)move.CapturePieceType)
 			.ThenBy(move => (int)globalBoard.GetPiece(move.StartSquare).PieceType)
+			//.ThenByDescending(move => killerMoves.ContainsKey(move) ? killerMoves[move] : 0)
 			.ToArray();
 
 		currentDepth++;
@@ -76,6 +102,14 @@ public class MyBot : IChessBot
 		}
 		currentBreadth = currentBreadth / (moves.Length + 1);
 		currentDepth--;
+
+		//if (killerMoves.ContainsKey(moves[bestMoveIndex]))
+		//{
+		//	killerMoves[moves[bestMoveIndex]] = Math.Max(killerMoves[moves[bestMoveIndex]], Math.Abs(bestMoveValue));
+		//}
+		//else if (!moves[bestMoveIndex].IsPromotion && !moves[bestMoveIndex].IsCapture)
+		//	killerMoves.Add(moves[bestMoveIndex], Math.Abs(bestMoveValue));
+
 		return (moves[bestMoveIndex], bestMoveValue);
 	}
 
@@ -125,10 +159,10 @@ public class MyBot : IChessBot
 						{
 							switch (row)
 							{
-								case 6: result = 4.5; break; 
-								case 5: result = 1.5; break; 
-								case 4: result = 1.1; break; 
-								default: result = 1; break; 
+								case 6: result = 4.5; break;
+								case 5: result = 1.5; break;
+								case 4: result = 1.1; break;
+								default: result = 1; break;
 							}
 						}
 						else

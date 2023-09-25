@@ -6,6 +6,7 @@ using System.Collections.Generic;
 
 public class MyBot : IChessBot
 {
+	// undo accidental remote branch deletion
 	// global variables
 	private Board globalBoard;
 	private readonly Random random = new Random();

@@ -7,6 +7,7 @@ namespace ChessChallenge.Example
 {
 	public class EvilBot : IChessBot
 	{
+
 		// global variables
 		private Board globalBoard;
 		private readonly Random random = new Random();
@@ -149,7 +150,7 @@ namespace ChessChallenge.Example
 						if (MultiplePawn(square)) result -= 0.1;
 					}
 					if (piece.IsKnight) result = 3.25 + Square(row, col) / 2;
-					if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 121 / 2;
+					if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 46 / 2;
 					if (piece.IsRook) result = 5;
 					if (piece.IsQueen) result = 9.75 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317 / 2;
 					if (piece.IsKing) result = Square(row, col) / 5;
@@ -204,10 +205,10 @@ namespace ChessChallenge.Example
 
 		// max=121
 		private double[,] DiagonalPositionValue ={
-	{ 73,67,63,61},
-	{ 67,85,81,79},
-	{ 63,81,101,99},
-	{ 61,79,99,121},
+	{ 25,18,10,1},
+	{ 18,40,36,31},
+	{ 10,36,45,43},
+	{ 1,31,43,46},
 	};
 		// rook max 196
 

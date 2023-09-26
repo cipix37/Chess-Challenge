@@ -83,7 +83,10 @@ public class MyBot : IChessBot
 
 	private double StaticEvaluation()
 	{
+		int reversedEndgameMarker = (BitboardHelper.GetNumberOfSetBits(globalBoard.WhitePiecesBitboard | globalBoard.BlackPiecesBitboard) - 2) / 30,
+			endgameMarker = (32 - BitboardHelper.GetNumberOfSetBits(globalBoard.WhitePiecesBitboard | globalBoard.BlackPiecesBitboard)) / 30;
 		double result = 0, whiteScore = 0, blackScore = 0;
+
 		for (int row = 0; row < 8; row++)
 		{
 			for (int col = 0; col < 8; col++)
@@ -146,11 +149,11 @@ public class MyBot : IChessBot
 					//if (BackwardPawn(square)) result -= 0.1;
 					if (MultiplePawn(square)) result -= 0.1;
 				}
-				if (piece.IsKnight) result = 3.25 + Square(row, col) / 2;
-				if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 46 / 2;
+				if (piece.IsKnight) result = 3.25 + 0.5 * endgameMarker + (Square(row, col) / 4) * (1 + reversedEndgameMarker);
+				if (piece.IsBishop) result = 3.25 + 0.5 * endgameMarker + (DiagonalPositionValue[f(row), f(col)] / 46 / 4) * (1 + reversedEndgameMarker);
 				if (piece.IsRook) result = 5;
-				if (piece.IsQueen) result = 9.75 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317 / 2;
-				if (piece.IsKing) result = Square(row, col) / 5;
+				if (piece.IsQueen) result = 9.5 + 1 * endgameMarker + ((DiagonalPositionValue[f(row), f(col)] + 196) / 317 / 4) * (1 + reversedEndgameMarker);
+				if (piece.IsKing) result = Square(row, col) / 5 * endgameMarker;
 				// player value
 				if (piece.IsWhite) whiteScore += result;
 				else blackScore += result;
@@ -200,7 +203,7 @@ public class MyBot : IChessBot
 
 	private double Square(int row, int col) => (g(row) + g(col)) / 2;
 
-	// max=121
+	// max=46
 	private double[,] DiagonalPositionValue ={
 	{ 25,18,10,1},
 	{ 18,40,36,31},

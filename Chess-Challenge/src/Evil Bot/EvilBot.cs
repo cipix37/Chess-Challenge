@@ -203,7 +203,7 @@ namespace ChessChallenge.Example
 
 		private double Square(int row, int col) => (g(row) + g(col)) / 2;
 
-		// max=121
+		// max=46
 		private double[,] DiagonalPositionValue ={
 	{ 25,18,10,1},
 	{ 18,40,36,31},

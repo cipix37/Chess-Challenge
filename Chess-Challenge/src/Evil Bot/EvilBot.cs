@@ -26,7 +26,10 @@ namespace ChessChallenge.Example
 		private (Move, double) DeepThink(Timer timer, double alfa, double beta, int player)
 		{
 			// if a leaf is reached return the static evaluation
-			if ((currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
+			// ChessChallenge.Application.ConsoleHelper.Log($"### DeepThink started {currentDepth} {currentBreadth} ###");
+
+			Move[] moves = globalBoard.GetLegalMoves(currentDepth >= maxDepth);
+			if (moves.Length == 0 || (currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
 			{
 				int color = globalBoard.IsWhiteToMove ? 1 : -1;
 				if (globalBoard.IsInsufficientMaterial())
@@ -41,7 +44,6 @@ namespace ChessChallenge.Example
 			// initializations
 			int bestMoveIndex = -1;
 			double bestMoveValue = -2000 * player;
-			Move[] moves = globalBoard.GetLegalMoves();
 			double[] moveValues = new double[moves.Length];
 
 			// sort moves

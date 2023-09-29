@@ -1,5 +1,6 @@
 ﻿using ChessChallenge.API;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using MyChess = ChessChallenge.Chess;
 
@@ -7,20 +8,50 @@ namespace ChessChallenge.Example
 {
 	public class EvilBot : IChessBot
 	{
-
 		// global variables
 		private Board globalBoard;
 		private readonly Random random = new Random();
-		private int maxDepth = 5, currentDepth = 0, maxBreadth = 150000, currentBreadth = 1;
+		private int currentMaxDepth, currentDepth = 0, maxBreadth, currentBreadth = 1;
 		private Move dummyMove;
+		private static int[] DepthAverageTimes = { 385, 385, 385, 385, 697, 2965, 19294, 168007 };
+		private IEnumerable<int> DepthRange = Enumerable.Range(0, DepthAverageTimes.Length);
 
 		public Move Think(Board board, Timer timer)
 		{
 			globalBoard = board;
-			int alpha = -2000;
-			int beta = 2000;
-			int currentPlayer = board.IsWhiteToMove ? 1 : -1;
-			return DeepThink(timer, alpha, beta, currentPlayer).Item1;
+
+			// set defaut search depth
+			currentMaxDepth = DepthRange.LastOrDefault(k => timer.GameStartTimeMilliseconds / 10 > DepthAverageTimes[k] - timer.IncrementMilliseconds);
+
+			// adjust search depth
+			if (globalBoard.PlyCount > 16) // no need to overthink first couple of moves
+			{
+				// think more if opponent has less time, returns 0 if opponent has more time
+				currentMaxDepth = Math.Max(currentMaxDepth,
+					DepthRange.LastOrDefault(k => timer.MillisecondsRemaining - DepthAverageTimes[k] + timer.IncrementMilliseconds > timer.OpponentMillisecondsRemaining));
+
+				// if there is a lot of remaining time in the match, then search more depth
+				// returns 0 if no depth satisfies equation
+				// currentMaxDepth = Math.Max(currentMaxDepth,
+				// 	DepthRange.LastOrDefault(k => timer.MillisecondsRemaining - DepthAverageTimes[k] + timer.IncrementMilliseconds > timer.GameStartTimeMilliseconds / 6));
+				//ChessChallenge.Application.ConsoleHelper.Log($"current Max Depth 2 = {currentMaxDepth}");
+
+				// time crisis -> need to work on this to account for the time diff
+				currentMaxDepth = Math.Min(currentMaxDepth,
+					DepthRange.LastOrDefault(k => k == 0 ? true : timer.MillisecondsRemaining / 10 > DepthAverageTimes[k - 1] - timer.IncrementMilliseconds));
+			}
+
+			// set max breadth depending on depth
+			maxBreadth = (int)Math.Pow(11, currentMaxDepth);
+
+			//ChessChallenge.Application.ConsoleHelper.Log($"max depth = {currentMaxDepth}");
+			//ChessChallenge.Application.ConsoleHelper.Log($"max Breadth = {maxBreadth}");
+			//ChessChallenge.Application.ConsoleHelper.Log(m.ToString());
+			//ChessChallenge.Application.ConsoleHelper.Log($"Time used: {timer.MillisecondsElapsedThisTurn}");
+			//ChessChallenge.Application.ConsoleHelper.Log($"Time remaining: {timer.MillisecondsRemaining}-{timer.OpponentMillisecondsRemaining}");
+			//ChessChallenge.Application.ConsoleHelper.Log("### End turn ###\n");
+
+			return DeepThink(timer, -2000, 2000, board.IsWhiteToMove ? 1 : -1).Item1;
 		}
 
 		private (Move, double) DeepThink(Timer timer, double alfa, double beta, int player)
@@ -28,16 +59,15 @@ namespace ChessChallenge.Example
 			// if a leaf is reached return the static evaluation
 			// ChessChallenge.Application.ConsoleHelper.Log($"### DeepThink started {currentDepth} {currentBreadth} ###");
 
-			Move[] moves = globalBoard.GetLegalMoves(currentDepth >= maxDepth);
-			if (moves.Length == 0 || (currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
+			Move[] moves = globalBoard.GetLegalMoves(currentDepth >= currentMaxDepth);
+			if (moves.Length == 0 || (currentDepth >= currentMaxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
 			{
-				int color = globalBoard.IsWhiteToMove ? 1 : -1;
 				if (globalBoard.IsInsufficientMaterial())
 					return (dummyMove, 0);
 				if (globalBoard.IsInCheckmate())
-					return (dummyMove, -color * (1000 - currentDepth));
+					return (dummyMove, -player * (1000 - currentDepth));
 				if (globalBoard.IsFiftyMoveDraw() || globalBoard.IsInStalemate() || globalBoard.IsRepeatedPosition())
-					return (dummyMove, color * 500 * Math.Sign(StaticEvaluation()));
+					return (dummyMove, player * 500 * Math.Sign(StaticEvaluation()));
 				return (dummyMove, StaticEvaluation());
 			}
 

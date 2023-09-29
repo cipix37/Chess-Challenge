@@ -8,7 +8,6 @@ public class MyBot : IChessBot
 {
 	// global variables
 	private Board globalBoard;
-	private readonly Random random = new Random();
 	private int currentMaxDepth, currentDepth = 0, maxBreadth, currentBreadth = 1;
 	private Move dummyMove;
 	private static int[] DepthAverageTimes = { 385, 385, 385, 385, 697, 2965, 19294, 168007 };
@@ -80,7 +79,7 @@ public class MyBot : IChessBot
 			.ToArray();
 
 		currentDepth++;
-		currentBreadth = currentBreadth * (moves.Length + 1);
+		currentBreadth *= moves.Length + 1;
 		for (int k = 0; k < moves.Length; k++)
 		{
 			globalBoard.MakeMove(moves[k]);
@@ -89,7 +88,7 @@ public class MyBot : IChessBot
 
 			if (player == 1)
 			{
-				if (moveValues[k] > bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
+				if (moveValues[k] > bestMoveValue)
 				{
 					bestMoveIndex = k;
 					bestMoveValue = moveValues[k];
@@ -98,7 +97,7 @@ public class MyBot : IChessBot
 			}
 			else
 			{
-				if (moveValues[k] < bestMoveValue)// || (moveValues[k] == bestMoveValue && random.Next(100) < 25))
+				if (moveValues[k] < bestMoveValue)
 				{
 					bestMoveIndex = k;
 					bestMoveValue = moveValues[k];
@@ -107,7 +106,7 @@ public class MyBot : IChessBot
 			}
 			if (alfa > beta) break;
 		}
-		currentBreadth = currentBreadth / (moves.Length + 1);
+		currentBreadth /= moves.Length + 1;
 		currentDepth--;
 		return (moves[bestMoveIndex], bestMoveValue);
 	}
@@ -116,9 +115,8 @@ public class MyBot : IChessBot
 
 	private double StaticEvaluation()
 	{
-		double result = 0, whiteScore = 0, blackScore = 0;
+		double result, finalResult = 0;
 		for (int row = 0; row < 8; row++)
-		{
 			for (int col = 0; col < 8; col++)
 			{
 				// piece value
@@ -128,9 +126,7 @@ public class MyBot : IChessBot
 				if (piece.IsPawn)
 				{
 					if (PassedPawn(square))
-					{
 						if (piece.IsWhite)
-						{
 							switch (row)
 							{
 								case 6: result = 4.5; break;
@@ -139,10 +135,7 @@ public class MyBot : IChessBot
 								case 3: result = 1.3; break;
 								default: result = 1.1; break;
 							}
-						}
-						else
-						{
-							switch (row)
+						else switch (row)
 							{
 								case 1: result = 4.5; break;
 								case 2: result = 2.5; break;
@@ -150,58 +143,47 @@ public class MyBot : IChessBot
 								case 4: result = 1.3; break;
 								default: result = 1.1; break;
 							}
-						}
-					}
-					else
-					{
-						if (piece.IsWhite)
+					else if (piece.IsWhite)
+						switch (row)
 						{
-							switch (row)
-							{
-								case 6: result = 4.5; break;
-								case 5: result = 1.5; break;
-								case 4: result = 1.1; break;
-								default: result = 1; break;
-							}
+							case 6: result = 4.5; break;
+							case 5: result = 1.5; break;
+							case 4: result = 1.1; break;
+							default: result = 1; break;
 						}
-						else
+					else switch (row)
 						{
-							switch (row)
-							{
-								case 1: result = 4.5; break;
-								case 2: result = 1.5; break;
-								case 3: result = 1.1; break;
-								default: result = 1; break;
-							}
+							case 1: result = 4.5; break;
+							case 2: result = 1.5; break;
+							case 3: result = 1.1; break;
+							default: result = 1; break;
 						}
-					}
-					if (IsolatedPawn(square)) result -= 0.15;
+					// isolated pawn
+					if ((MyChess.Bits.AdjacentFileMasks[square.File] & PawnBitboard(true)) == 0)
+						result -= 0.15;
 					//if (BackwardPawn(square)) result -= 0.1;
-					if (MultiplePawn(square)) result -= 0.1;
+					// multiple pawn
+					if (BitboardHelper.GetNumberOfSetBits(MyChess.Bits.FileMask[square.File] & PawnBitboard(true)) > 1)
+						result -= 0.1;
 				}
 				if (piece.IsKnight) result = 3.25 + Square(row, col) / 2;
-				if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 46 / 2;
+				if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 92;
 				if (piece.IsRook) result = 5;
-				if (piece.IsQueen) result = 9.75 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317 / 2;
+				if (piece.IsQueen) result = 10.059148265 + DiagonalPositionValue[f(row), f(col)] / 634;
 				if (piece.IsKing) result = Square(row, col) / 5;
 				// player value
-				if (piece.IsWhite) whiteScore += result;
-				else blackScore += result;
+				finalResult += piece.IsWhite ? result : -result;
 			}
-		}
-		return whiteScore - blackScore;
-		//if (whiteScore > blackScore)
-		//{
-		//	return whiteScore / blackScore;
-		//}
-		//return -blackScore / whiteScore;
+		return finalResult;
 	}
+
+	private ulong PawnBitboard(bool color) => globalBoard.GetPieceBitboard(PieceType.Pawn, color);
 
 	private bool PassedPawn(Square square)
 	{
-		if (globalBoard.GetPiece(square).IsWhite)
-			return (MyChess.Bits.WhitePassedPawnMask[square.Index] & globalBoard.GetPieceBitboard(PieceType.Pawn, false)) == 0;
-		return (MyChess.Bits.BlackPassedPawnMask[square.Index] & globalBoard.GetPieceBitboard(PieceType.Pawn, true)) == 0;
+		return globalBoard.GetPiece(square).IsWhite
+			? (MyChess.Bits.WhitePassedPawnMask[square.Index] & PawnBitboard(false)) == 0
+			: (MyChess.Bits.BlackPassedPawnMask[square.Index] & PawnBitboard(true)) == 0;
 	}
 
 	//private bool BackwardPawn(Square square)
@@ -215,18 +197,6 @@ public class MyBot : IChessBot
 	//	}
 	//	return (BlackBackwardMask & MyChess.Bits.AdjacentFileMasks[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, false)) == 0;
 	//}
-
-	private bool MultiplePawn(Square square)
-	{
-		return BitboardHelper.GetNumberOfSetBits(
-			MyChess.Bits.FileMask[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, globalBoard.GetPiece(square).IsWhite)
-			) > 1;
-	}
-
-	private bool IsolatedPawn(Square square)
-	{
-		return (MyChess.Bits.AdjacentFileMasks[square.File] & globalBoard.GetPieceBitboard(PieceType.Pawn, globalBoard.GetPiece(square).IsWhite)) == 0;
-	}
 
 	private int f(int x) => 3.5 > x ? x : 7 - x;
 	private double g(int x) => Math.Sin(Math.PI * x / 7);

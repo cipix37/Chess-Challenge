@@ -32,6 +32,7 @@ namespace ChessChallenge.Application
                     DrawNextText($"Num Timeouts: {stats.NumTimeouts}", regularFontSize, col);
                     DrawNextText($"Total Time Used: {stats.TotalTimeUsed / 1000}", regularFontSize, col);
                     DrawNextText($"Total Time Remaining: {stats.TotalTimeRemaining / 1000}", regularFontSize, col);
+                    DrawNextText($"Average move time: {stats.AverageMoveTime / 1000}", regularFontSize, col);
                     // DrawNextText($"Num Illegal Moves: {stats.NumIllegalMoves}", regularFontSize, col);
                 }
            

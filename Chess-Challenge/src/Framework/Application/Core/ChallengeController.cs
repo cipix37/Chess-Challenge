@@ -296,6 +296,8 @@ namespace ChessChallenge.Application
 					BotStatsB.TotalTimeRemaining += botAPlaysWhite ? PlayerBlack.TimeRemainingMs : PlayerWhite.TimeRemainingMs;
 					BotStatsA.TotalTimeUsed += GameDurationMilliseconds - (botAPlaysWhite ? PlayerWhite.TimeRemainingMs : PlayerBlack.TimeRemainingMs);
 					BotStatsB.TotalTimeUsed += GameDurationMilliseconds - (botAPlaysWhite ? PlayerBlack.TimeRemainingMs : PlayerWhite.TimeRemainingMs);
+					BotStatsA.AverageMoveTime += BotStatsA.TotalTimeUsed / board.plyCount * 2;
+					BotStatsB.AverageMoveTime += BotStatsB.TotalTimeUsed / board.plyCount * 2;
 
 					UpdateBotMatchStats(result);
 					botMatchGameIndex++;
@@ -455,6 +457,7 @@ namespace ChessChallenge.Application
 			public int NumIllegalMoves;
 			public double TotalTimeRemaining;
 			public double TotalTimeUsed;
+			public double AverageMoveTime;
 
 			public BotMatchStats(string name) => BotName = name;
 		}

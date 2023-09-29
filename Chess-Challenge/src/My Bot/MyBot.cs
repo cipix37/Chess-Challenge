@@ -16,44 +16,31 @@ public class MyBot : IChessBot
 
 	public Move Think(Board board, Timer timer)
 	{
-		//ChessChallenge.Application.ConsoleHelper.Log("### Start turn ###");
-		//ChessChallenge.Application.ConsoleHelper.Log($"Time remaining: {timer.MillisecondsRemaining}-{timer.OpponentMillisecondsRemaining}");
-
 		globalBoard = board;
 
 		// set defaut search depth
-		int defaultDepth = DepthRange.LastOrDefault(k => DepthAverageTimes[k] < timer.GameStartTimeMilliseconds / 20);
-		currentMaxDepth = defaultDepth;
-		//ChessChallenge.Application.ConsoleHelper.Log($"Defaut depth = {currentMaxDepth}");
-		//ChessChallenge.Application.ConsoleHelper.Log($"Ply count = {globalBoard.PlyCount}");
+		currentMaxDepth = DepthRange.LastOrDefault(k => timer.GameStartTimeMilliseconds / 10 > DepthAverageTimes[k] - timer.IncrementMilliseconds);
 
 		// adjust search depth
 		if (globalBoard.PlyCount > 16) // no need to overthink first couple of moves
 		{
-			// if I have enough time to search more depth, then do it
-			// returns 0 if opponent has more time
+			// think more if opponent has less time, returns 0 if opponent has more time
 			currentMaxDepth = Math.Max(currentMaxDepth,
-				DepthRange.LastOrDefault(k => timer.MillisecondsRemaining - DepthAverageTimes[k] > timer.OpponentMillisecondsRemaining));
-			//ChessChallenge.Application.ConsoleHelper.Log($"current Max Depth 1 = {currentMaxDepth}");
+				DepthRange.LastOrDefault(k => timer.MillisecondsRemaining - DepthAverageTimes[k] + timer.IncrementMilliseconds > timer.OpponentMillisecondsRemaining));
 
 			// if there is a lot of remaining time in the match, then search more depth
 			// returns 0 if no depth satisfies equation
-			currentMaxDepth = Math.Max(currentMaxDepth,
-				DepthRange.LastOrDefault(k => timer.MillisecondsRemaining - DepthAverageTimes[k] > timer.GameStartTimeMilliseconds / 6));
+			// currentMaxDepth = Math.Max(currentMaxDepth,
+			// 	DepthRange.LastOrDefault(k => timer.MillisecondsRemaining - DepthAverageTimes[k] + timer.IncrementMilliseconds > timer.GameStartTimeMilliseconds / 6));
 			//ChessChallenge.Application.ConsoleHelper.Log($"current Max Depth 2 = {currentMaxDepth}");
 
 			// time crisis -> need to work on this to account for the time diff
-			if (currentMaxDepth == defaultDepth)
-			{
-				if (timer.MillisecondsRemaining < timer.OpponentMillisecondsRemaining)
-				{
-					currentMaxDepth = 4;
-				}
-			}
+			currentMaxDepth = Math.Min(currentMaxDepth,
+				DepthRange.LastOrDefault(k => k == 0 ? true : timer.MillisecondsRemaining / 10 > DepthAverageTimes[k - 1] - timer.IncrementMilliseconds));
 		}
 
 		// set max breadth depending on depth
-		maxBreadth = (int)Math.Pow(10, currentMaxDepth);
+		maxBreadth = (int)Math.Pow(11, currentMaxDepth);
 
 		//ChessChallenge.Application.ConsoleHelper.Log($"max depth = {currentMaxDepth}");
 		//ChessChallenge.Application.ConsoleHelper.Log($"max Breadth = {maxBreadth}");
@@ -68,24 +55,23 @@ public class MyBot : IChessBot
 	private (Move, double) DeepThink(Timer timer, double alfa, double beta, int player)
 	{
 		// if a leaf is reached return the static evaluation
-		//if (currentDepth >= currentMaxDepth || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
-		if ((currentDepth >= currentMaxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
+		// ChessChallenge.Application.ConsoleHelper.Log($"### DeepThink started {currentDepth} {currentBreadth} ###");
+
+		Move[] moves = globalBoard.GetLegalMoves(currentDepth >= currentMaxDepth);
+		if (moves.Length == 0 || (currentDepth >= currentMaxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
 		{
-			//ChessChallenge.Application.ConsoleHelper.Log($"current depth = {currentDepth} current breadth = {currentBreadth}");
-			int color = globalBoard.IsWhiteToMove ? 1 : -1;
 			if (globalBoard.IsInsufficientMaterial())
 				return (dummyMove, 0);
 			if (globalBoard.IsInCheckmate())
-				return (dummyMove, -color * (1000 - currentDepth));
+				return (dummyMove, -player * (1000 - currentDepth));
 			if (globalBoard.IsFiftyMoveDraw() || globalBoard.IsInStalemate() || globalBoard.IsRepeatedPosition())
-				return (dummyMove, color * 500 * Math.Sign(StaticEvaluation()));
+				return (dummyMove, player * 500 * Math.Sign(StaticEvaluation()));
 			return (dummyMove, StaticEvaluation());
 		}
 
 		// initializations
 		int bestMoveIndex = -1;
 		double bestMoveValue = -2000 * player;
-		Move[] moves = globalBoard.GetLegalMoves();
 		double[] moveValues = new double[moves.Length];
 
 		// sort moves
@@ -94,7 +80,7 @@ public class MyBot : IChessBot
 			.ToArray();
 
 		currentDepth++;
-		currentBreadth *= (2 + moves.Length / 3);
+		currentBreadth = currentBreadth * (moves.Length + 1);
 		for (int k = 0; k < moves.Length; k++)
 		{
 			globalBoard.MakeMove(moves[k]);
@@ -121,9 +107,8 @@ public class MyBot : IChessBot
 			}
 			if (alfa > beta) break;
 		}
-		currentBreadth /= (2 + moves.Length / 3);
+		currentBreadth = currentBreadth / (moves.Length + 1);
 		currentDepth--;
-
 		return (moves[bestMoveIndex], bestMoveValue);
 	}
 
@@ -142,60 +127,60 @@ public class MyBot : IChessBot
 				result = 0;
 				if (piece.IsPawn)
 				{
-					//if (PassedPawn(square))
-					//{
-					//	if (piece.IsWhite)
-					//	{
-					//		switch (row)
-					//		{
-					//			case 6: result = 4.5; break;
-					//			case 5: result = 2.5; break;
-					//			case 4: result = 1.5; break;
-					//			case 3: result = 1.3; break;
-					//			default: result = 1.1; break;
-					//		}
-					//	}
-					//	else
-					//	{
-					//		switch (row)
-					//		{
-					//			case 1: result = 4.5; break;
-					//			case 2: result = 2.5; break;
-					//			case 3: result = 1.5; break;
-					//			case 4: result = 1.3; break;
-					//			default: result = 1.1; break;
-					//		}
-					//	}
-					//}
-					//else
-					//{
-					if (piece.IsWhite)
+					if (PassedPawn(square))
 					{
-						switch (row)
+						if (piece.IsWhite)
 						{
-							case 6: result = 4.5; break;
-							case 5: result = 1.5; break;
-							case 4: result = 1.1; break;
-							default: result = 1; break;
+							switch (row)
+							{
+								case 6: result = 4.5; break;
+								case 5: result = 2.5; break;
+								case 4: result = 1.5; break;
+								case 3: result = 1.3; break;
+								default: result = 1.1; break;
+							}
+						}
+						else
+						{
+							switch (row)
+							{
+								case 1: result = 4.5; break;
+								case 2: result = 2.5; break;
+								case 3: result = 1.5; break;
+								case 4: result = 1.3; break;
+								default: result = 1.1; break;
+							}
 						}
 					}
 					else
 					{
-						switch (row)
+						if (piece.IsWhite)
 						{
-							case 1: result = 4.5; break;
-							case 2: result = 1.5; break;
-							case 3: result = 1.1; break;
-							default: result = 1; break;
+							switch (row)
+							{
+								case 6: result = 4.5; break;
+								case 5: result = 1.5; break;
+								case 4: result = 1.1; break;
+								default: result = 1; break;
+							}
+						}
+						else
+						{
+							switch (row)
+							{
+								case 1: result = 4.5; break;
+								case 2: result = 1.5; break;
+								case 3: result = 1.1; break;
+								default: result = 1; break;
+							}
 						}
 					}
-					//}
-					//if (IsolatedPawn(square)) result -= 0.15;
-					////if (BackwardPawn(square)) result -= 0.1;
-					//if (MultiplePawn(square)) result -= 0.1;
+					if (IsolatedPawn(square)) result -= 0.15;
+					//if (BackwardPawn(square)) result -= 0.1;
+					if (MultiplePawn(square)) result -= 0.1;
 				}
 				if (piece.IsKnight) result = 3.25 + Square(row, col) / 2;
-				if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 121 / 2;
+				if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 46 / 2;
 				if (piece.IsRook) result = 5;
 				if (piece.IsQueen) result = 9.75 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317 / 2;
 				if (piece.IsKing) result = Square(row, col) / 5;
@@ -250,10 +235,10 @@ public class MyBot : IChessBot
 
 	// max=121
 	private double[,] DiagonalPositionValue ={
-	{ 73,67,63,61},
-	{ 67,85,81,79},
-	{ 63,81,101,99},
-	{ 61,79,99,121},
+	{ 25,18,10,1},
+	{ 18,40,36,31},
+	{ 10,36,45,43},
+	{ 1,31,43,46},
 	};
 	// rook max 196
 

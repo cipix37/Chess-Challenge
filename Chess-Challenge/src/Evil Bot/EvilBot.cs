@@ -7,6 +7,7 @@ namespace ChessChallenge.Example
 {
 	public class EvilBot : IChessBot
 	{
+
 		// global variables
 		private Board globalBoard;
 		private readonly Random random = new Random();
@@ -25,7 +26,10 @@ namespace ChessChallenge.Example
 		private (Move, double) DeepThink(Timer timer, double alfa, double beta, int player)
 		{
 			// if a leaf is reached return the static evaluation
-			if ((currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
+			// ChessChallenge.Application.ConsoleHelper.Log($"### DeepThink started {currentDepth} {currentBreadth} ###");
+
+			Move[] moves = globalBoard.GetLegalMoves(currentDepth >= maxDepth);
+			if (moves.Length == 0 || (currentDepth >= maxDepth && currentBreadth >= maxBreadth) || globalBoard.IsInCheckmate() || globalBoard.IsDraw())
 			{
 				int color = globalBoard.IsWhiteToMove ? 1 : -1;
 				if (globalBoard.IsInsufficientMaterial())
@@ -40,7 +44,6 @@ namespace ChessChallenge.Example
 			// initializations
 			int bestMoveIndex = -1;
 			double bestMoveValue = -2000 * player;
-			Move[] moves = globalBoard.GetLegalMoves();
 			double[] moveValues = new double[moves.Length];
 
 			// sort moves
@@ -96,33 +99,33 @@ namespace ChessChallenge.Example
 					result = 0;
 					if (piece.IsPawn)
 					{
-						//if (PassedPawn(square))
-						//{
-						//	if (piece.IsWhite)
-						//	{
-						//		switch (row)
-						//		{
-						//			case 6: result = 4.5; break;
-						//			case 5: result = 2.5; break;
-						//			case 4: result = 1.5; break;
-						//			case 3: result = 1.3; break;
-						//			default: result = 1.1; break;
-						//		}
-						//	}
-						//	else
-						//	{
-						//		switch (row)
-						//		{
-						//			case 1: result = 4.5; break;
-						//			case 2: result = 2.5; break;
-						//			case 3: result = 1.5; break;
-						//			case 4: result = 1.3; break;
-						//			default: result = 1.1; break;
-						//		}
-						//	}
-						//}
-						//else
-						//{
+						if (PassedPawn(square))
+						{
+							if (piece.IsWhite)
+							{
+								switch (row)
+								{
+									case 6: result = 4.5; break;
+									case 5: result = 2.5; break;
+									case 4: result = 1.5; break;
+									case 3: result = 1.3; break;
+									default: result = 1.1; break;
+								}
+							}
+							else
+							{
+								switch (row)
+								{
+									case 1: result = 4.5; break;
+									case 2: result = 2.5; break;
+									case 3: result = 1.5; break;
+									case 4: result = 1.3; break;
+									default: result = 1.1; break;
+								}
+							}
+						}
+						else
+						{
 							if (piece.IsWhite)
 							{
 								switch (row)
@@ -143,13 +146,13 @@ namespace ChessChallenge.Example
 									default: result = 1; break;
 								}
 							}
-						//}
-						//if (IsolatedPawn(square)) result -= 0.15;
+						}
+						if (IsolatedPawn(square)) result -= 0.15;
 						//if (BackwardPawn(square)) result -= 0.1;
-						//if (MultiplePawn(square)) result -= 0.1;
+						if (MultiplePawn(square)) result -= 0.1;
 					}
 					if (piece.IsKnight) result = 3.25 + Square(row, col) / 2;
-					if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 121 / 2;
+					if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 46 / 2;
 					if (piece.IsRook) result = 5;
 					if (piece.IsQueen) result = 9.75 + (DiagonalPositionValue[f(row), f(col)] + 196) / 317 / 2;
 					if (piece.IsKing) result = Square(row, col) / 5;
@@ -204,10 +207,10 @@ namespace ChessChallenge.Example
 
 		// max=121
 		private double[,] DiagonalPositionValue ={
-	{ 73,67,63,61},
-	{ 67,85,81,79},
-	{ 63,81,101,99},
-	{ 61,79,99,121},
+	{ 25,18,10,1},
+	{ 18,40,36,31},
+	{ 10,36,45,43},
+	{ 1,31,43,46},
 	};
 		// rook max 196
 

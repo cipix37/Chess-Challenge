@@ -167,9 +167,9 @@ public class MyBot : IChessBot
 						result -= 0.1;
 				}
 				if (piece.IsKnight) result = 3.25 + Square(row, col) / 2;
-				if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 92;
+				if (piece.IsBishop) result = 3.25 + DiagonalPositionValue[f(row), f(col)] / 128;
 				if (piece.IsRook) result = 5;
-				if (piece.IsQueen) result = 10.059148265 + DiagonalPositionValue[f(row), f(col)] / 634;
+				if (piece.IsQueen) result = 10.1 + DiagonalPositionValue[f(row), f(col)] / 512;
 				if (piece.IsKing) result = Square(row, col) / 5;
 				// player value
 				finalResult += piece.IsWhite ? result : -result;
